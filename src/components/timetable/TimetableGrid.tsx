@@ -15,7 +15,10 @@ import {
   Layers,
   Lock,
   Globe,
-  Coffee
+  Coffee,
+  LayoutGrid,
+  ListFilter,
+  MoveHorizontal
 } from 'lucide-react';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../context/AuthContext';
@@ -47,6 +50,7 @@ export const TimetableGrid: React.FC = () => {
   const [roomFilter, setRoomFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAllDepartments, setShowAllDepartments] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'matrix' | 'agenda'>('matrix');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -168,18 +172,13 @@ export const TimetableGrid: React.FC = () => {
           </p>
         </div>
 
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="no-print header-actions-row">
           <button onClick={handleExportCSV} className="btn btn-secondary">
             <Download size={16} /> Export CSV
           </button>
           <button onClick={handlePrint} className="btn btn-secondary">
             <Printer size={16} /> Print Timetable
           </button>
-          {canAddSlot && (
-            <button onClick={handleAddNew} className="btn btn-primary">
-              <Plus size={16} /> Add Slot
-            </button>
-          )}
         </div>
       </div>
 
@@ -285,11 +284,21 @@ export const TimetableGrid: React.FC = () => {
                 }}
                 title="Your timetable is strictly account-specific to your login"
               >
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
-                />
+                <div
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--accent-primary)',
+                    flexShrink: 0
+                  }}
+                >
+                  <User size={13} />
+                </div>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {currentUser.name}
                 </span>
@@ -366,23 +375,52 @@ export const TimetableGrid: React.FC = () => {
           </div>
         </div>
 
-        {/* Day Tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflowX: 'auto', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
-          <button
-            onClick={() => setSelectedDay('ALL')}
-            className={`btn btn-sm ${selectedDay === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            Full Weekly View
-          </button>
-          {DAYS_OF_WEEK.map(d => (
+        {/* Day Tabs & View Mode Row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
+          {/* Day Tabs with Smooth Touch Scrolling */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflowX: 'auto', flex: '1 1 300px', paddingBottom: '2px', scrollbarWidth: 'none' }}>
             <button
-              key={d}
-              onClick={() => setSelectedDay(d)}
-              className={`btn btn-sm ${selectedDay === d ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setSelectedDay('ALL')}
+              className={`btn btn-sm ${selectedDay === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ whiteSpace: 'nowrap' }}
             >
-              {d}
+              Full Weekly View
             </button>
-          ))}
+            {DAYS_OF_WEEK.map(d => (
+              <button
+                key={d}
+                onClick={() => setSelectedDay(d)}
+                className={`btn btn-sm ${selectedDay === d ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+
+          {/* View Mode Toggle Switcher */}
+          <div className="no-print" style={{ display: 'inline-flex', background: 'var(--bg-input)', padding: '0.2rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => setViewMode('matrix')}
+              className={`btn btn-sm ${viewMode === 'matrix' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.75rem', height: '30px', padding: '0.25rem 0.65rem', border: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              title="Matrix Table Grid View"
+            >
+              <LayoutGrid size={13} />
+              <span>Matrix</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('agenda')}
+              className={`btn btn-sm ${viewMode === 'agenda' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.75rem', height: '30px', padding: '0.25rem 0.65rem', border: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              title="Vertical Mobile Agenda View"
+            >
+              <ListFilter size={13} />
+              <span>Timeline</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -390,22 +428,16 @@ export const TimetableGrid: React.FC = () => {
       {(() => {
         const renderPeriodGrid = (dayName: DayOfWeek, daySlots: TimetableSlot[]) => {
           return (
-            <div 
-              style={{ 
-                width: '100%',
-                overflowX: 'hidden',
-                borderRadius: 'var(--radius-md)'
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                  gap: '0.45rem',
-                  width: '100%'
-                }}
-              >
-                {TIMETABLE_PERIODS.map(period => {
+            <div>
+              {/* Mobile/Tablet Swipe Hint */}
+              <div className="timetable-scroll-hint no-print">
+                <MoveHorizontal size={14} />
+                <span>Swipe / Scroll horizontally to explore all 6 periods and recess</span>
+              </div>
+
+              <div className="timetable-scroll-outer">
+                <div className="timetable-matrix-grid">
+                  {TIMETABLE_PERIODS.map(period => {
                   if (period.isBreak) {
                     return (
                       <div
@@ -761,78 +793,239 @@ export const TimetableGrid: React.FC = () => {
                 })}
               </div>
             </div>
-          );
-        };
+          </div>
+        );
+      };
 
-        if (selectedDay === 'ALL') {
-          return (
-            /* Weekly Matrix Grid */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {DAYS_OF_WEEK.map(dayName => {
-                const daySlots = filteredSlots
-                  .filter(s => s.day === dayName)
-                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
+      const renderAgendaView = (dayName: DayOfWeek, daySlots: TimetableSlot[]) => {
+        return (
+          <div className="timetable-agenda-list">
+            {TIMETABLE_PERIODS.map(period => {
+              if (period.isBreak) {
                 return (
-                  <div 
-                    key={dayName}
-                    className="glass-panel"
-                    style={{ padding: '1.25rem', overflow: 'hidden' }}
+                  <div
+                    key={period.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.85rem',
+                      padding: '0.85rem 1.15rem',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.03) 100%)',
+                      border: '1px dashed rgba(245, 158, 11, 0.35)'
+                    }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.65rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{dayName}</h3>
-                        <span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>
-                          {daySlots.length} Classes Scheduled
-                        </span>
-                      </div>
-                      {canAddSlot && (
-                        <button
-                          onClick={() => handleAddSlotToDay(dayName)}
-                          className="btn btn-secondary btn-sm no-print"
-                        >
-                          <Plus size={14} /> Add Slot to {dayName}
-                        </button>
-                      )}
+                    <div
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '50%',
+                        background: 'rgba(245, 158, 11, 0.18)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Coffee size={18} color="var(--accent-amber, #f59e0b)" />
                     </div>
-
-                    {renderPeriodGrid(dayName, daySlots)}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--accent-amber, #f59e0b)' }}>
+                        Recess / Refreshment Pause
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                        {period.timing} • Break Interval
+                      </div>
+                    </div>
+                    <span className="badge badge-amber" style={{ fontSize: '0.7rem' }}>Recess</span>
                   </div>
                 );
-              })}
-            </div>
-          );
-        } else {
-          return (
-            /* Single Day View with Period Grid and Timeline */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-                      {selectedDay} Schedule ({selectedSemester === 'ALL' ? 'All Semesters' : `Semester ${selectedSemester}`})
-                    </h3>
-                    <span className="badge badge-indigo">
-                      {filteredSlots.length} Classes Scheduled
-                    </span>
+              }
+
+              const periodSlots = daySlots.filter(s => getSlotPeriod(s) === period.periodNumber);
+
+              return (
+                <div key={period.id} className="agenda-period-block">
+                  <div className="agenda-period-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <span className="badge badge-indigo" style={{ fontWeight: 700 }}>
+                        {period.name}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                        {period.timing}
+                      </span>
+                    </div>
+                    {canAddSlot && (
+                      <button
+                        onClick={() => handleAddSlotToPeriod(dayName, period)}
+                        className="btn btn-secondary btn-sm no-print"
+                        style={{ height: '26px', fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}
+                      >
+                        <Plus size={12} /> Add Class
+                      </button>
+                    )}
                   </div>
-                  {canAddSlot && (
-                    <button
-                      onClick={() => handleAddSlotToDay(selectedDay as DayOfWeek)}
-                      className="btn btn-primary btn-sm no-print"
-                    >
-                      <Plus size={14} /> Add Slot to {selectedDay}
-                    </button>
+
+                  {periodSlots.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: '0.75rem' }}>
+                      {periodSlots.map(slot => (
+                        <div
+                          key={slot.id}
+                          className="glass-panel"
+                          style={{
+                            padding: '0.95rem 1.15rem',
+                            borderLeft: `4px solid ${slot.color || 'var(--accent-primary)'}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span
+                                style={{
+                                  fontFamily: 'var(--font-mono)',
+                                  fontWeight: 700,
+                                  fontSize: '0.82rem',
+                                  color: slot.color || 'var(--accent-indigo)',
+                                  background: 'rgba(99, 102, 241, 0.12)',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: 'var(--radius-sm)'
+                                }}
+                              >
+                                {slot.subjectCode}
+                              </span>
+                              <span className={`badge ${slot.type === 'Lab' ? 'badge-cyan' : slot.type === 'Tutorial' ? 'badge-amber' : slot.type === 'Seminar' ? 'badge-rose' : 'badge-indigo'}`} style={{ fontSize: '0.68rem' }}>
+                                {slot.type}
+                              </span>
+                            </div>
+                            {canUserManageSlot(slot) && (
+                              <div className="no-print" style={{ display: 'flex', gap: '0.35rem' }}>
+                                <button
+                                  onClick={() => handleEditSlot(slot)}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ height: '24px', padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
+                                >
+                                  <Edit3 size={11} /> Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteTimetableSlot(slot.id)}
+                                  className="btn btn-danger btn-sm"
+                                  style={{ height: '24px', padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {slot.subjectName}
+                          </h4>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <Clock size={13} style={{ color: 'var(--accent-indigo)' }} />
+                              <span style={{ fontFamily: 'var(--font-mono)' }}>{slot.startTime} - {slot.endTime}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <User size={13} style={{ color: 'var(--text-muted)' }} />
+                              <span>{slot.facultyName}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <MapPin size={13} style={{ color: 'var(--accent-emerald)' }} />
+                              <span style={{ fontWeight: 600 }}>{slot.roomName}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0.85rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                      Free Period • No scheduled session
+                    </div>
                   )}
                 </div>
+              );
+            })}
+          </div>
+        );
+      };
 
-                {/* 7-Period Columns Grid for Selected Day */}
-                {renderPeriodGrid(selectedDay as DayOfWeek, filteredSlots)}
+      if (selectedDay === 'ALL') {
+        return (
+          /* Weekly Schedule Display */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {DAYS_OF_WEEK.map(dayName => {
+              const daySlots = filteredSlots
+                .filter(s => s.day === dayName)
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+              return (
+                <div 
+                  key={dayName}
+                  className="glass-panel"
+                  style={{ padding: '1.25rem' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{dayName}</h3>
+                      <span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>
+                        {daySlots.length} Classes Scheduled
+                      </span>
+                    </div>
+                    {canAddSlot && (
+                      <button
+                        onClick={() => handleAddSlotToDay(dayName)}
+                        className="btn btn-secondary btn-sm no-print"
+                      >
+                        <Plus size={14} /> Add Slot to {dayName}
+                      </button>
+                    )}
+                  </div>
+
+                  {viewMode === 'matrix' 
+                    ? renderPeriodGrid(dayName, daySlots)
+                    : renderAgendaView(dayName, daySlots)
+                  }
+                </div>
+              );
+            })}
+          </div>
+        );
+      } else {
+        return (
+          /* Single Day View with Period Grid or Agenda */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+                    {selectedDay} Schedule ({selectedSemester === 'ALL' ? 'All Semesters' : `Semester ${selectedSemester}`})
+                  </h3>
+                  <span className="badge badge-indigo">
+                    {filteredSlots.length} Classes Scheduled
+                  </span>
+                </div>
+                {canAddSlot && (
+                  <button
+                    onClick={() => handleAddSlotToDay(selectedDay as DayOfWeek)}
+                    className="btn btn-primary btn-sm no-print"
+                  >
+                    <Plus size={14} /> Add Slot to {selectedDay}
+                  </button>
+                )}
               </div>
+
+              {viewMode === 'matrix'
+                ? renderPeriodGrid(selectedDay as DayOfWeek, filteredSlots)
+                : renderAgendaView(selectedDay as DayOfWeek, filteredSlots)
+              }
             </div>
-          );
-        }
-      })()}
+          </div>
+        );
+      }
+    })()}
 
       {/* Add / Edit Timetable Slot Modal */}
       <TimetableSlotModal

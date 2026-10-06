@@ -158,7 +158,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
           {/* Semester, Section, Day */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '1rem' }}>
+          <div className="form-grid-1-1-15">
             <div className="form-group">
               <label className="form-label">Semester</label>
               <select
@@ -223,7 +223,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
           </div>
 
           {/* Subject Code & Name */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '1rem' }}>
+          <div className="form-grid-1-2">
             <div className="form-group">
               <label className="form-label">Subject Code *</label>
               <input
@@ -250,7 +250,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
           </div>
 
           {/* Faculty & Room */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.5fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 {isAccountSpecific ? <Lock size={12} style={{ color: 'var(--accent-indigo)' }} /> : null} Faculty / Instructor Name *
@@ -310,7 +310,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
           {/* Color Tag */}
           <div className="form-group">
             <label className="form-label">Card Accent Color</label>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
               {COLOR_PALETTE.map(c => (
                 <button
                   key={c}

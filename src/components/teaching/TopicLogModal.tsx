@@ -85,12 +85,12 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
   const [facultyName, setFacultyName] = useState<string>(currentUser.name);
   const [date, setDate] = useState<string>(getTodayDateStr());
   const [dayOfWeek, setDayOfWeek] = useState<string>(getDayNameFromDateStr(getTodayDateStr()));
-  const [unitNumber, setUnitNumber] = useState<number>(1);
+  const [unitNumber, setUnitNumber] = useState<number | string>(1);
   const [topicTitle, setTopicTitle] = useState<string>('');
   const [topicsCoveredSummary, setTopicsCoveredSummary] = useState<string>('');
   const [classType, setClassType] = useState<TopicClassType>('Theory');
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('Chalk & Board');
-  const [studentsPresent, setStudentsPresent] = useState<number>(54);
+  const [studentsPresent, setStudentsPresent] = useState<number | string>(54);
   const [status, setStatus] = useState<TopicStatus>('Completed');
   const [remarks, setRemarks] = useState<string>('');
 
@@ -177,17 +177,17 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
       facultyName: facultyName.trim(),
       date,
       day: dayOfWeek,
-      unitNumber: Number(unitNumber),
+      unitNumber: Number(unitNumber) || 1,
       topicTitle: topicTitle.trim(),
-      topicsCoveredSummary: topicsCoveredSummary?.trim() || topicTitle.trim(),
+      topicsCoveredSummary: topicsCoveredSummary?.trim() || '',
       classType,
       deliveryMode,
       presentDate: date,
       plannedDate: date,
       actualDate: date,
       hoursSpent: Number(initialLog?.hoursSpent ?? 1),
-      studentsPresent: Number(studentsPresent),
-      attendancePercentage: Number(studentsPresent),
+      studentsPresent: Number(studentsPresent) || 0,
+      attendancePercentage: Number(studentsPresent) || 0,
       status,
       remarks: remarks.trim()
     };
@@ -211,8 +211,8 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
     >
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
-          {/* Branch Name & Instructor */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr', gap: '1rem' }}>
+          {/* Branch Name, Faculty & Present Date */}
+          <div className="form-grid-3">
             <div className="form-group">
               <label className="form-label">Branch Name *</label>
               <input
@@ -230,16 +230,27 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
               <input
                 type="text"
                 required
-                placeholder="e.g. Raisa Tahseen"
+                placeholder="e.g. Dr. P.Shahnaz"
                 className="form-input"
                 value={facultyName}
                 onChange={e => setFacultyName(e.target.value)}
               />
             </div>
+
+            <div className="form-group">
+              <label className="form-label">Present Date *</label>
+              <input
+                type="date"
+                required
+                className="form-input"
+                value={date}
+                onChange={e => handleDateChange(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Semester, Section, Unit & Day of Week */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1.3fr', gap: '1rem' }}>
+          <div className="form-grid-4">
             <div className="form-group">
               <label className="form-label">Semester *</label>
               <select
@@ -268,15 +279,14 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
 
             <div className="form-group">
               <label className="form-label">Unit Number</label>
-              <select
-                className="form-select"
+              <input
+                type="number"
+                min="1"
+                placeholder="e.g. 1"
+                className="form-input"
                 value={unitNumber}
-                onChange={e => setUnitNumber(Number(e.target.value))}
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(u => (
-                  <option key={u} value={u}>Unit {u}</option>
-                ))}
-              </select>
+                onChange={e => setUnitNumber(e.target.value === '' ? '' : Number(e.target.value))}
+              />
             </div>
 
             <div className="form-group">
@@ -307,7 +317,7 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
           </div>
 
           {/* Class Type, Teaching Aids & Status */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-3">
             <div className="form-group">
               <label className="form-label">Class Type</label>
               <select
@@ -346,19 +356,8 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
             </div>
           </div>
 
-          {/* Present Date & Students Present */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Present Date</label>
-              <input
-                type="date"
-                required
-                className="form-input"
-                value={date}
-                onChange={e => handleDateChange(e.target.value)}
-              />
-            </div>
-
+          {/* Students Present & Assignment */}
+          <div className="form-grid-1-2">
             <div className="form-group">
               <label className="form-label">No. of Students Present</label>
               <input
@@ -368,21 +367,20 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
                 placeholder="e.g. 54"
                 className="form-input"
                 value={studentsPresent}
-                onChange={e => setStudentsPresent(Number(e.target.value))}
+                onChange={e => setStudentsPresent(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
-          </div>
 
-          {/* Assignment for Students */}
-          <div className="form-group">
-            <label className="form-label">Assignment for Students</label>
-            <input
-              type="text"
-              placeholder="Enter assignment details"
-              className="form-input"
-              value={remarks}
-              onChange={e => setRemarks(e.target.value)}
-            />
+            <div className="form-group">
+              <label className="form-label">Assignment for Students</label>
+              <input
+                type="text"
+                placeholder="Enter assignment details"
+                className="form-input"
+                value={remarks}
+                onChange={e => setRemarks(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 

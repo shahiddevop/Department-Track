@@ -45,7 +45,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
   const dayNames: DayOfWeek[] = ['Sunday' as any, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const currentDayName = (todayDayIndex >= 1 && todayDayIndex <= 6) ? dayNames[todayDayIndex] : 'Monday';
 
-  // Today's schedule slots (strictly account-specific for faculty & Raisa Tahseen)
+  // Today's schedule slots (strictly account-specific for faculty & Dr. P.Shahnaz)
   const todaySlots = timetable
     .filter(s => {
       if (s.branchId !== selectedBranchId) return false;
@@ -55,10 +55,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
     })
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  // Upcoming Events (Live & Upcoming)
+  // Upcoming Events (Live & Upcoming across the institution)
   const upcomingEvents = events
-    .filter(e => e.branchId === selectedBranchId && (e.status === 'Upcoming' || e.status === 'Live'))
-    .slice(0, 3);
+    .filter(e => e.status === 'Upcoming' || e.status === 'Live' || e.status === 'In Progress')
+    .slice(0, 4);
 
   // Recent Topic Logs
   const recentLogs = topicLogs
@@ -74,7 +74,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
       <div 
         className="glass-panel"
         style={{
-          padding: '2rem',
+          padding: 'clamp(1.15rem, 3vw, 2rem)',
           marginBottom: '2rem',
           background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)',
           border: '1px solid var(--border-glow)',
@@ -84,7 +84,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.25rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
               <span className="badge badge-indigo">
                 {selectedBranch.name} ({selectedBranch.code})
               </span>
@@ -92,7 +92,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
                 • Academic Year 2026-27
               </span>
             </div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>
               Welcome back, {currentUser.name}! 👋
             </h1>
             <p style={{ fontSize: '0.925rem', color: 'var(--text-secondary)', marginTop: '0.35rem', maxWidth: '650px' }}>
@@ -101,7 +101,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
           </div>
 
           {/* Quick Action Buttons */}
-          <div className="no-print" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <div className="no-print header-actions-row">
             <button onClick={() => setActiveTab('teaching-plan')} className="btn btn-primary">
               <BookOpenCheck size={16} /> Log Today's Lecture
             </button>
@@ -113,7 +113,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
       </div>
 
       {/* KPI Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+      <div className="dashboard-stats-grid">
         <StatCard
           title="Today's Classes"
           value={todaySlots.length}
@@ -149,7 +149,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
       </div>
 
       {/* Two Column Section: Today's Schedule + Upcoming Events & Logs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div className="dashboard-two-col">
         {/* Left: Today's Schedule Live Matrix */}
         <div className="glass-panel" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
@@ -283,7 +283,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+        <div className="cards-grid-auto">
           {recentLogs.map(log => (
             <div
               key={log.id}

@@ -22,7 +22,6 @@ import { useAuth } from '../../context/AuthContext';
 import { exportService } from '../../services/exportService';
 import { DailyTopicLog, TopicStatus, SubjectProgress } from '../../types';
 import { TopicLogModal } from './TopicLogModal';
-import { SyllabusProgress } from './SyllabusProgress';
 import { SubjectModal } from './SubjectModal';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -140,7 +139,7 @@ export const TeachingPlanList: React.FC = () => {
           </p>
         </div>
 
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="no-print header-actions-row">
           <button onClick={handleExportCSV} className="btn btn-secondary">
             <Download size={16} /> Export Teaching Log (CSV)
           </button>
@@ -281,19 +280,6 @@ export const TeachingPlanList: React.FC = () => {
         </div>
       </div>
 
-      {/* Syllabus Progress Overview Cards */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.85rem' }}>
-          Subject Syllabus Coverage Overview
-        </h3>
-        <SyllabusProgress 
-          subjects={filteredSubjectsProgress} 
-          onSelectSubject={(code) => setSelectedSubject(code)}
-          onEditSubject={canLogTopics ? handleEditSubject : undefined}
-          onDeleteSubject={canLogTopics ? handleDeleteSubject : undefined}
-        />
-      </div>
-
       {/* Daily Logs Timeline / Cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {filteredLogs.length === 0 ? (
@@ -348,7 +334,7 @@ export const TeachingPlanList: React.FC = () => {
                   </h3>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.825rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.825rem', flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                       <Calendar size={14} style={{ color: 'var(--accent-indigo)' }} />
@@ -383,28 +369,6 @@ export const TeachingPlanList: React.FC = () => {
                 </div>
               </div>
 
-              {/* Topics Covered Body */}
-              {log.topicsCoveredSummary && (
-                <div 
-                  style={{
-                    background: 'var(--bg-input)',
-                    padding: '0.9rem 1.15rem',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.5,
-                    marginBottom: '0.85rem',
-                    overflowWrap: 'break-word',
-                    wordBreak: 'break-word',
-                    wordWrap: 'break-word',
-                    whiteSpace: 'pre-wrap',
-                    maxWidth: '100%',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {log.topicsCoveredSummary}
-                </div>
-              )}
 
               {/* Metadata Pill Row */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>

@@ -2,21 +2,14 @@ import React, { useState } from 'react';
 import { 
   Building2, 
   Plus, 
-  DownloadCloud, 
-  UploadCloud, 
-  RotateCcw, 
   ShieldCheck, 
-  BookOpen, 
-  Code, 
-  Layers, 
-  Sparkles,
   Edit3,
   CheckCircle2,
-  Lock
+  Lock,
+  Database
 } from 'lucide-react';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../context/AuthContext';
-import { storageService } from '../../services/storageService';
 import { Modal } from '../common/Modal';
 import { Branch } from '../../types';
 
@@ -27,8 +20,6 @@ export const DepartmentSettings: React.FC = () => {
     updateBranch, 
     selectedBranchId, 
     setSelectedBranchId, 
-    resetData, 
-    restoreData,
     addToast 
   } = useDepartment();
 
@@ -117,35 +108,6 @@ export const DepartmentSettings: React.FC = () => {
     setIsBranchModalOpen(false);
   };
 
-  // Full Department JSON Backup Download
-  const handleDownloadBackup = () => {
-    const jsonStr = storageService.exportFullBackupJSON();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `AcadPulse_Full_Department_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    addToast('Department backup JSON exported successfully', 'success');
-  };
-
-  // File Upload Restore
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const content = evt.target?.result as string;
-      if (content) {
-        restoreData(content);
-      }
-    };
-    reader.readAsText(file);
-  };
 
   return (
     <div className="page-container">
@@ -156,7 +118,7 @@ export const DepartmentSettings: React.FC = () => {
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Department Configuration & System Settings</h1>
           </div>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            Manage academic engineering branches, backup & restore departmental database, and customize system attributes.
+            Manage academic departments, configure branch credentials, and customize leadership attributes.
           </p>
         </div>
 
@@ -234,7 +196,7 @@ export const DepartmentSettings: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+        <div className="cards-grid-auto">
           {branches.map(branch => {
             const isCurrent = branch.id === selectedBranchId;
             const canEditThis = canEditBranchDetails(branch.id, branch);
@@ -325,94 +287,45 @@ export const DepartmentSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Database Backup & Factory Reset */}
-      <div className="glass-panel" style={{ padding: '1.75rem', marginBottom: '2rem' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.4rem' }}>
-          Data Backup, Restore & Maintenance
-        </h3>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-          Export full JSON department archives, upload and restore system backups, or reset to original realistic demo data.
+      {/* Firebase Cloud Database Status Panel */}
+      <div className="glass-panel" style={{ padding: '1.5rem', marginTop: '1.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <Database size={20} color="var(--accent-indigo)" />
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>Cloud Database & Backend Services</h3>
+          </div>
+          <span className="badge badge-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <CheckCircle2 size={13} /> Firebase Live Connected
+          </span>
+        </div>
+
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+          Your application is directly synchronized with Google Cloud Firestore. Changes to timetables, teaching topic logs, events, and room bookings persist in real-time across all devices.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-          {/* Backup Download */}
-          <div style={{ padding: '1.25rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <DownloadCloud size={18} color="var(--accent-indigo)" />
-              JSON Full Backup
-            </h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.35rem', marginBottom: '0.85rem' }}>
-              Download a complete JSON database including timetables, lesson logs, events, rooms, and notifications.
-            </p>
-            <button onClick={handleDownloadBackup} className="btn btn-primary btn-sm" style={{ width: '100%' }}>
-              Download Backup File
-            </button>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Database Engine</div>
+            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', color: 'var(--accent-indigo)' }}>Google Cloud Firestore</div>
           </div>
 
-          {/* Restore JSON */}
-          <div style={{ padding: '1.25rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <UploadCloud size={18} color="var(--accent-cyan)" />
-              Restore from Backup
-            </h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.35rem', marginBottom: '0.85rem' }}>
-              Upload a previously exported JSON backup file to overwrite or restore department state.
-            </p>
-            <label className="btn btn-secondary btn-sm" style={{ width: '100%', cursor: 'pointer', textAlign: 'center' }}>
-              Upload JSON File
-              <input type="file" accept=".json" onChange={handleFileUpload} style={{ display: 'none' }} />
-            </label>
+          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Project ID</div>
+            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', fontFamily: 'var(--font-mono)' }}>adt-academicdepartmentaltrack</div>
           </div>
 
-          {/* Factory Reset */}
-          <div style={{ padding: '1.25rem', background: 'rgba(244, 63, 94, 0.06)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <RotateCcw size={18} />
-              Reset Demo Data
-            </h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.35rem', marginBottom: '0.85rem' }}>
-              Reset all local modifications and restore the default realistic demo dataset across all branches.
-            </p>
-            <button onClick={resetData} className="btn btn-danger btn-sm" style={{ width: '100%' }}>
-              Reset to Factory Demo Data
-            </button>
+          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Real-time Listeners</div>
+            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', color: '#10b981' }}>Active (Snapshot Sync)</div>
+          </div>
+
+          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Offline Resiliency</div>
+            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', color: '#f59e0b' }}>Local Cache Enabled</div>
           </div>
         </div>
       </div>
 
-      {/* Extensibility & Developer Guide */}
-      <div className="glass-panel" style={{ padding: '1.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.85rem' }}>
-          <Code size={22} color="var(--accent-indigo)" />
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Developer & Architecture Guide: Modifying & Extending</h3>
-        </div>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem' }}>
-          This web application is built with a modular component architecture and type-safe data pipelines. Follow these simple steps to extend features or add new pages:
-        </p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', fontSize: '0.825rem' }}>
-          <div style={{ background: 'var(--bg-input)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-            <h5 style={{ fontWeight: 700, color: 'var(--accent-indigo)', marginBottom: '0.35rem' }}>1. Adding a New Page / Tab</h5>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Add a new tab key to <code>TabType</code> in <code>src/types/index.ts</code>, register its icon & label in <code>Sidebar.tsx</code>, and render its view component inside <code>App.tsx</code>.
-            </p>
-          </div>
-
-          <div style={{ background: 'var(--bg-input)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-            <h5 style={{ fontWeight: 700, color: 'var(--accent-emerald)', marginBottom: '0.35rem' }}>2. Adding New Fields or Models</h5>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Extend the TypeScript interfaces in <code>src/types/index.ts</code>, then update <code>DepartmentContext.tsx</code> for state handlers and <code>storageService.ts</code> for local caching.
-            </p>
-          </div>
-
-          <div style={{ background: 'var(--bg-input)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-            <h5 style={{ fontWeight: 700, color: 'var(--accent-amber)', marginBottom: '0.35rem' }}>3. Connecting Backend / Cloud API</h5>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Replace <code>localStorage</code> calls inside <code>src/services/storageService.ts</code> with <code>fetch()</code> or <code>axios</code> REST / GraphQL API endpoints to sync with Node.js/PostgreSQL/Supabase.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Add / Edit Branch Modal */}
       <Modal
@@ -425,7 +338,7 @@ export const DepartmentSettings: React.FC = () => {
       >
         <form onSubmit={handleBranchSubmit}>
           <div className="modal-body">
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '1rem' }}>
+            <div className="form-grid-1-2">
               <div className="form-group">
                 <label className="form-label">Branch Code *</label>
                 <input
@@ -451,7 +364,7 @@ export const DepartmentSettings: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.5fr', gap: '1rem' }}>
+            <div className="form-grid-2">
               <div className="form-group">
                 <label className="form-label">Head of Department (HOD) *</label>
                 <input
@@ -468,7 +381,7 @@ export const DepartmentSettings: React.FC = () => {
                 <label className="form-label">HOD Email Address</label>
                 <input
                   type="email"
-                  placeholder="hod.dept@college.edu"
+                  placeholder="hod.dept@gmail.com"
                   className="form-input"
                   value={hodEmail}
                   onChange={e => setHodEmail(e.target.value)}
@@ -476,7 +389,7 @@ export const DepartmentSettings: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="form-grid-3">
               <div className="form-group">
                 <label className="form-label">Est. Year</label>
                 <input

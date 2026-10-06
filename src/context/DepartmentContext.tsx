@@ -11,6 +11,9 @@ import {
   SubjectProgress
 } from '../types';
 import { storageService } from '../services/storageService';
+import { firestoreService } from '../services/firestoreService';
+import { calculateEventStatus } from '../utils/eventStatus';
+import { syncAllRoomStatuses, isBookingActiveNow, formatTime12h } from '../utils/roomStatus';
 
 export interface ToastMessage {
   id: string;
@@ -66,7 +69,9 @@ interface DepartmentContextType {
   rooms: Room[];
   bookings: RoomBooking[];
   addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'status' | 'timestamp'>) => void;
-  updateRoomStatus: (roomId: string, status: Room['currentStatus'], occupant?: string, subject?: string) => void;
+  deleteRoomBooking: (id: string) => void;
+  clearAllBookings: () => void;
+  updateRoomStatus: (roomId: string, status: Room['currentStatus'], occupant?: string, subject?: string, slotTime?: string) => void;
 
   // Notifications
   notifications: Notification[];
@@ -97,11 +102,19 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Core Data States
   const [branches, setBranches] = useState<Branch[]>(() => storageService.getBranches());
   const [selectedBranchId, setSelectedBranchIdState] = useState<string>(() => storageService.getSelectedBranchId());
-  const [rooms, setRooms] = useState<Room[]>(() => storageService.getRooms());
+  const [bookings, setBookings] = useState<RoomBooking[]>(() => storageService.getBookings());
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    const storedRooms = storageService.getRooms();
+    const storedBookings = storageService.getBookings();
+    const { updatedRooms } = syncAllRoomStatuses(storedRooms, storedBookings, new Date());
+    return updatedRooms;
+  });
   const [timetable, setTimetable] = useState<TimetableSlot[]>(() => storageService.getTimetable());
   const [topicLogs, setTopicLogs] = useState<DailyTopicLog[]>(() => storageService.getTopicLogs());
-  const [events, setEvents] = useState<DepartmentEvent[]>(() => storageService.getEvents());
-  const [bookings, setBookings] = useState<RoomBooking[]>(() => storageService.getBookings());
+  const [events, setEvents] = useState<DepartmentEvent[]>(() => {
+    const stored = storageService.getEvents();
+    return stored.map(e => ({ ...e, status: calculateEventStatus(e) }));
+  });
   const [notifications, setNotifications] = useState<Notification[]>(() => storageService.getNotifications());
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -135,6 +148,43 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     storageService.setEvents(events);
   }, [events]);
 
+  // Automatically update event statuses based on current date and time
+  useEffect(() => {
+    const syncEventStatuses = () => {
+      setEvents(prev => {
+        let hasChanges = false;
+        const updated = prev.map(ev => {
+          const autoStatus = calculateEventStatus(ev);
+          if (ev.status !== autoStatus) {
+            hasChanges = true;
+            return { ...ev, status: autoStatus };
+          }
+          return ev;
+        });
+        return hasChanges ? updated : prev;
+      });
+    };
+
+    syncEventStatuses();
+    const interval = setInterval(syncEventStatuses, 15000); // Re-check every 15 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  // Automatically sync room occupancy against real-time booking intervals & current clock
+  useEffect(() => {
+    const syncRoomStatuses = () => {
+      const now = new Date();
+      setRooms(prevRooms => {
+        const { updatedRooms, hasChanges } = syncAllRoomStatuses(prevRooms, bookings, now);
+        return hasChanges ? updatedRooms : prevRooms;
+      });
+    };
+
+    syncRoomStatuses();
+    const interval = setInterval(syncRoomStatuses, 5000); // Re-check every 5 seconds
+    return () => clearInterval(interval);
+  }, [bookings]);
+
   useEffect(() => {
     storageService.setBookings(bookings);
   }, [bookings]);
@@ -142,6 +192,53 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     storageService.setNotifications(notifications);
   }, [notifications]);
+
+  // Real-time Cloud Firestore synchronization
+  useEffect(() => {
+    // 1. Seed initial data if Firestore database is empty
+    firestoreService.seedInitialDataIfEmpty().catch(err => {
+      console.warn('[Firestore] Seed check:', err);
+    });
+
+    // 2. Subscribe to real-time Cloud Firestore updates
+    const unsubEvents = firestoreService.subscribeEvents(cloudEvents => {
+      setEvents(cloudEvents.map(e => ({ ...e, status: calculateEventStatus(e) })));
+    });
+
+    const unsubTimetable = firestoreService.subscribeTimetable(cloudSlots => {
+      setTimetable(cloudSlots);
+    });
+
+    const unsubLogs = firestoreService.subscribeTopicLogs(cloudLogs => {
+      setTopicLogs(cloudLogs);
+    });
+
+    const unsubBranches = firestoreService.subscribeBranches(cloudBranches => {
+      setBranches(cloudBranches);
+    });
+
+    const unsubRooms = firestoreService.subscribeRooms(cloudRooms => {
+      setRooms(cloudRooms);
+    });
+
+    const unsubBookings = firestoreService.subscribeBookings(cloudBookings => {
+      setBookings(cloudBookings);
+    });
+
+    const unsubNotifs = firestoreService.subscribeNotifications(cloudNotifs => {
+      setNotifications(cloudNotifs);
+    });
+
+    return () => {
+      unsubEvents();
+      unsubTimetable();
+      unsubLogs();
+      unsubBranches();
+      unsubRooms();
+      unsubBookings();
+      unsubNotifs();
+    };
+  }, []);
 
   // Toast System Helper
   const addToast = (message: string, type: ToastMessage['type'] = 'success') => {
@@ -183,11 +280,17 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const newBranch: Branch = { ...newBranchData, id };
     setBranches(prev => [...prev, newBranch]);
     setSelectedBranchIdState(id);
+    firestoreService.saveBranch(newBranch);
     addToast(`New branch ${newBranch.name} created successfully!`, 'success');
   };
 
   const updateBranch = (id: string, updated: Partial<Branch>) => {
-    setBranches(prev => prev.map(b => b.id === id ? { ...b, ...updated } : b));
+    const existing = branches.find(b => b.id === id);
+    if (existing) {
+      const merged = { ...existing, ...updated };
+      setBranches(prev => prev.map(b => b.id === id ? merged : b));
+      firestoreService.saveBranch(merged);
+    }
     addToast('Branch details updated', 'success');
   };
 
@@ -260,6 +363,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const id = 'slot-' + Math.random().toString(36).substr(2, 9);
     const newSlot: TimetableSlot = { ...slotData, id };
     setTimetable(prev => [...prev, newSlot]);
+    firestoreService.saveTimetableSlot(newSlot);
     addToast(`Added ${newSlot.subjectCode} to ${newSlot.day} schedule`, 'success');
     return { hasConflict: false };
   };
@@ -275,12 +379,14 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return conflict;
     }
     setTimetable(prev => prev.map(s => s.id === id ? merged : s));
+    firestoreService.saveTimetableSlot(merged);
     addToast('Schedule slot updated successfully', 'success');
     return { hasConflict: false };
   };
 
   const deleteTimetableSlot = (id: string) => {
     setTimetable(prev => prev.filter(s => s.id !== id));
+    firestoreService.deleteTimetableSlot(id);
     addToast('Slot removed from timetable', 'info');
   };
 
@@ -289,16 +395,23 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const id = 'log-' + Math.random().toString(36).substr(2, 9);
     const newLog: DailyTopicLog = { ...logData, id };
     setTopicLogs(prev => [newLog, ...prev]);
+    firestoreService.saveTopicLog(newLog);
     addToast(`Teaching log recorded for ${newLog.subjectCode}: ${newLog.topicTitle}`, 'success');
   };
 
   const updateTopicLog = (id: string, updated: Partial<DailyTopicLog>) => {
-    setTopicLogs(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l));
+    const existing = topicLogs.find(l => l.id === id);
+    if (existing) {
+      const merged = { ...existing, ...updated };
+      setTopicLogs(prev => prev.map(l => l.id === id ? merged : l));
+      firestoreService.saveTopicLog(merged);
+    }
     addToast('Teaching log updated', 'success');
   };
 
   const deleteTopicLog = (id: string) => {
     setTopicLogs(prev => prev.filter(l => l.id !== id));
+    firestoreService.deleteTopicLog(id);
     addToast('Teaching log entry removed', 'info');
   };
 
@@ -452,18 +565,31 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Events CRUD
   const addEvent = (eventData: Omit<DepartmentEvent, 'id' | 'registeredCount'>) => {
     const id = 'event-' + Math.random().toString(36).substr(2, 9);
-    const newEvent: DepartmentEvent = { ...eventData, id, registeredCount: 0 };
+    const autoStatus = calculateEventStatus(eventData);
+    const newEvent: DepartmentEvent = { ...eventData, id, status: autoStatus, registeredCount: 0 };
     setEvents(prev => [newEvent, ...prev]);
+    firestoreService.saveEvent(newEvent);
     addToast(`New event "${newEvent.title}" published!`, 'success');
   };
 
   const updateEvent = (id: string, updated: Partial<DepartmentEvent>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updated } : e));
+    let toSave: DepartmentEvent | null = null;
+    setEvents(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const merged = { ...e, ...updated };
+      const autoStatus = calculateEventStatus(merged);
+      toSave = { ...merged, status: autoStatus };
+      return toSave;
+    }));
+    if (toSave) {
+      firestoreService.saveEvent(toSave);
+    }
     addToast('Event updated successfully', 'success');
   };
 
   const deleteEvent = (id: string) => {
     setEvents(prev => prev.filter(e => e.id !== id));
+    firestoreService.deleteEvent(id);
     addToast('Event deleted', 'info');
   };
 
@@ -474,7 +600,9 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       addToast('Event is currently at maximum capacity!', 'warning');
       return false;
     }
-    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, registeredCount: e.registeredCount + 1 } : e));
+    const updated = { ...ev, registeredCount: ev.registeredCount + 1 };
+    setEvents(prev => prev.map(e => e.id === eventId ? updated : e));
+    firestoreService.saveEvent(updated);
     addToast(`RSVP registered for "${ev.title}"!`, 'success');
     return true;
   };
@@ -488,25 +616,69 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       status: 'Approved',
       timestamp: new Date().toISOString()
     };
-    setBookings(prev => [newBooking, ...prev]);
 
-    // Also update room status
-    updateRoomStatus(bookingData.roomId, 'Occupied', bookingData.bookedBy, bookingData.purpose);
-    addToast(`Room ${bookingData.roomNumber} reserved successfully!`, 'success');
+    const now = new Date();
+    const isActiveNow = isBookingActiveNow(newBooking, now);
+    const formattedSlot = `${formatTime12h(newBooking.startTime)} - ${formatTime12h(newBooking.endTime)}`;
+
+    setBookings(prev => [newBooking, ...prev]);
+    firestoreService.saveBooking(newBooking);
+
+    if (isActiveNow) {
+      updateRoomStatus(bookingData.roomId, 'Occupied', bookingData.bookedBy, bookingData.purpose, formattedSlot);
+      addToast(`Room ${bookingData.roomNumber} reserved and is currently In-Use (${formattedSlot})!`, 'success');
+    } else {
+      addToast(`Room ${bookingData.roomNumber} reserved for ${bookingData.date} (${formattedSlot})`, 'success');
+    }
   };
 
-  const updateRoomStatus = (roomId: string, status: Room['currentStatus'], occupant?: string, subject?: string) => {
+  const updateRoomStatus = (
+    roomId: string, 
+    status: Room['currentStatus'], 
+    occupant?: string, 
+    subject?: string,
+    slotTime?: string
+  ) => {
+    if (status === 'Available') {
+      // If releasing room early, adjust/complete any currently overlapping booking so it doesn't immediately re-occupy
+      const now = new Date();
+      setBookings(prev => prev.map(b => {
+        if (b.roomId === roomId && isBookingActiveNow(b, now)) {
+          const nowHours = String(now.getHours()).padStart(2, '0');
+          const nowMins = String(now.getMinutes()).padStart(2, '0');
+          return { ...b, endTime: `${nowHours}:${nowMins}` };
+        }
+        return b;
+      }));
+    }
+
     setRooms(prev => prev.map(r => {
       if (r.id === roomId) {
         return {
           ...r,
           currentStatus: status,
           currentOccupant: status === 'Occupied' ? occupant : undefined,
-          currentSubject: status === 'Occupied' ? subject : undefined
+          currentSubject: status === 'Occupied' ? subject : undefined,
+          currentSlotTime: status === 'Occupied' ? slotTime : undefined
         };
       }
       return r;
     }));
+  };
+
+  const deleteRoomBooking = (id: string) => {
+    const booking = bookings.find(b => b.id === id);
+    setBookings(prev => prev.filter(b => b.id !== id));
+    firestoreService.deleteBooking(id);
+    if (booking) {
+      addToast(`Reservation for ${booking.roomNumber} (${booking.purpose}) deleted`, 'info');
+    }
+  };
+
+  const clearAllBookings = () => {
+    firestoreService.clearAllBookings(bookings);
+    setBookings([]);
+    addToast('All room reservation records have been cleared', 'info');
   };
 
   // Notifications
@@ -519,20 +691,31 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       isRead: false
     };
     setNotifications(prev => [newNotif, ...prev]);
+    firestoreService.saveNotification(newNotif);
     addToast(`Broadcast Announcement posted: ${newNotif.title}`, 'info');
   };
 
   const markNotificationAsRead = (id: string) => {
+    const target = notifications.find(n => n.id === id);
+    if (target) {
+      firestoreService.saveNotification({ ...target, isRead: true });
+    }
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
   };
 
   const markAllNotificationsAsRead = () => {
+    notifications.forEach(n => {
+      if (!n.isRead) {
+        firestoreService.saveNotification({ ...n, isRead: true });
+      }
+    });
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     addToast('All notifications marked as read', 'info');
   };
 
   const deleteNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
+    firestoreService.deleteNotification(id);
   };
 
   const unreadNotificationCount = useMemo(() => {
@@ -608,6 +791,8 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         rooms,
         bookings,
         addRoomBooking,
+        deleteRoomBooking,
+        clearAllBookings,
         updateRoomStatus,
         notifications,
         unreadNotificationCount,

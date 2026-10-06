@@ -51,9 +51,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
       <header className="navbar no-print" style={{
         height: '70px',
         padding: '0 2rem',
-        background: 'var(--bg-card)',
+        background: '#ADD8E6',
+        color: '#001f3f',
         backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--border-subtle)',
+        borderBottom: '1px solid rgba(0, 31, 63, 0.15)',
+        boxShadow: '0 2px 10px rgba(0, 31, 63, 0.06)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -70,21 +72,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
               aria-label="Open Navigation Menu"
               title="Menu"
             >
-              <Menu size={20} />
+              <Menu size={20} color="#001f3f" />
             </button>
           )}
+
+          {/* Application Title in Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginRight: '0.25rem' }}>
+            <span style={{ fontWeight: 800, fontSize: '1.15rem', color: '#001f3f', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+              ADT
+            </span>
+            <span className="navbar-brand-subtitle" style={{ fontSize: '0.85rem', color: '#001f3f', opacity: 0.85, fontWeight: 600, whiteSpace: 'nowrap' }}>
+              | Academic Departmental Track
+            </span>
+          </div>
 
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
-              className="btn btn-secondary"
+              className="btn btn-secondary navbar-branch-btn"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem',
                 padding: '0.5rem 1rem',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-input)'
+                borderRadius: 'var(--radius-md)'
               }}
             >
               <div 
@@ -92,16 +103,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
                   width: '10px', 
                   height: '10px', 
                   borderRadius: '50%', 
-                  background: selectedBranch.color || '#6366f1' 
+                  background: selectedBranch.color || '#001f3f' 
                 }} 
               />
-              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#001f3f' }}>
                 {selectedBranch.code}
               </span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              <span className="navbar-branch-text" style={{ color: '#001f3f', opacity: 0.8, fontSize: '0.85rem' }}>
                 | {selectedBranch.name}
               </span>
-              <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+              <ChevronDown size={16} color="#001f3f" />
             </button>
 
             {/* Dropdown Menu */}
@@ -113,6 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
                   top: '120%',
                   left: 0,
                   width: '320px',
+                  maxWidth: 'calc(100vw - 2rem)',
                   padding: '0.5rem',
                   zIndex: 200,
                   boxShadow: 'var(--shadow-lg)'
@@ -159,24 +171,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
         </div>
 
         {/* Right: Theme Toggle, Notifications, User Profile */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="btn btn-secondary btn-icon"
+            className="btn btn-secondary btn-icon navbar-icon-btn"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
-            {theme === 'dark' ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
+            {theme === 'dark' ? <Sun size={18} color="#b45309" /> : <Moon size={18} color="#001f3f" />}
           </button>
 
           {/* Notifications Trigger */}
           <button
             onClick={onOpenNotifications}
-            className="btn btn-secondary btn-icon"
+            className="btn btn-secondary btn-icon navbar-icon-btn"
             style={{ position: 'relative' }}
             title="Notifications & Announcements"
           >
-            <Bell size={18} />
+            <Bell size={18} color="#001f3f" />
             {unreadNotificationCount > 0 && (
               <span
                 style={{
@@ -193,7 +205,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: '2px solid var(--bg-card)'
+                  border: '2px solid #ADD8E6'
                 }}
               >
                 {unreadNotificationCount}
@@ -204,39 +216,42 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
           {/* User Profile Pill */}
           <div
             onClick={() => setIsProfileModalOpen(true)}
+            className="navbar-user-pill"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.75rem',
-              padding: '0.35rem 0.85rem 0.35rem 0.45rem',
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-subtle)',
+              gap: '0.5rem',
+              padding: '0.35rem 0.65rem 0.35rem 0.45rem',
               borderRadius: 'var(--radius-full)',
-              cursor: 'pointer',
-              transition: 'border-color var(--tr-base)'
+              cursor: 'pointer'
             }}
             title="Click to switch role or view profile"
           >
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
+            <div
               style={{
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                objectFit: 'cover',
-                border: '2px solid var(--accent-primary)'
+                background: 'rgba(0, 31, 63, 0.12)',
+                border: '2px solid #001f3f',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#001f3f',
+                flexShrink: 0
               }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            >
+              <UserIcon size={18} />
+            </div>
+            <div className="navbar-user-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#001f3f', whiteSpace: 'nowrap' }}>
                   {currentUser.name}
                 </span>
                 {getRoleBadge()}
               </div>
             </div>
-            <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />
+            <ChevronDown size={14} color="#001f3f" />
           </div>
         </div>
       </header>

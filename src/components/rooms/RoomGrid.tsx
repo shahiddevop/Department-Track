@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   DoorClosed, 
   Plus, 
@@ -12,17 +12,30 @@ import {
   AlertCircle, 
   Layers,
   Sparkles,
-  CalendarCheck
+  CalendarCheck,
+  Lock,
+  ShieldCheck,
+  Trash2
 } from 'lucide-react';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../context/AuthContext';
 import { exportService } from '../../services/exportService';
 import { Room, RoomStatus, RoomType } from '../../types';
 import { RoomBookingModal } from './RoomBookingModal';
+import { getFacultyAssignedRoom } from '../../utils/roomAssignment';
 
 export const RoomGrid: React.FC = () => {
-  const { rooms, bookings, updateRoomStatus, selectedBranch } = useDepartment();
-  const { canBookRooms, canManageDepartment } = useAuth();
+  const { 
+    rooms, 
+    bookings, 
+    updateRoomStatus, 
+    deleteRoomBooking, 
+    clearAllBookings,
+    selectedBranch, 
+    selectedBranchId, 
+    timetable 
+  } = useDepartment();
+  const { canBookRooms, canManageDepartment, currentUser } = useAuth();
 
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -30,14 +43,20 @@ export const RoomGrid: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<Room | null>(null);
 
+  const facultyAssignedRoomInfo = useMemo(() => {
+    return getFacultyAssignedRoom({
+      currentUser,
+      rooms,
+      timetable,
+      selectedBranchId
+    });
+  }, [currentUser, rooms, timetable, selectedBranchId]);
+
   const roomTypes: string[] = [
     'ALL',
-    'Smart Classroom',
-    'Lecture Hall',
     'Computer Lab',
-    'Hardware / IoT Lab',
-    'Seminar Hall',
-    'Auditorium'
+    'Life Science',
+    'Seminar Hall'
   ];
 
   const filteredRooms = rooms.filter(room => {
@@ -46,7 +65,7 @@ export const RoomGrid: React.FC = () => {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchNum = room.number.toLowerCase().includes(q);
+      const matchNum = room.number.toLowerCase().includes(q) || room.number.toLowerCase().replace(/[-_]/g, ' ').includes(q);
       const matchName = room.name.toLowerCase().includes(q);
       const matchFloor = room.floor.toLowerCase().includes(q);
       const matchFac = room.facilities.some(f => f.toLowerCase().includes(q));
@@ -88,9 +107,28 @@ export const RoomGrid: React.FC = () => {
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
             Monitor real-time classroom & laboratory occupancy, inspect hardware equipment, and schedule reservations.
           </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
+            <span 
+              className="badge badge-indigo" 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '0.4rem', 
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.78rem'
+              }}
+            >
+              <Lock size={13} />
+              <span>Pre-Assigned Facility ({currentUser.branchName}):</span>
+              <strong style={{ fontFamily: 'var(--font-mono)' }}>
+                {facultyAssignedRoomInfo.room.number}
+              </strong>
+              <span style={{ opacity: 0.85 }}>({facultyAssignedRoomInfo.room.name})</span>
+            </span>
+          </div>
         </div>
 
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="no-print header-actions-row">
           <button onClick={handleExportCSV} className="btn btn-secondary">
             <Download size={16} /> Export Inventory (CSV)
           </button>
@@ -115,12 +153,13 @@ export const RoomGrid: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
           {/* Type Tabs */}
-          <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', flex: 1, paddingBottom: '2px' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', flex: '1 1 280px', paddingBottom: '2px', scrollbarWidth: 'none' }}>
             {roomTypes.map(t => (
               <button
                 key={t}
                 onClick={() => setSelectedType(t)}
                 className={`btn btn-sm ${selectedType === t ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ whiteSpace: 'nowrap' }}
               >
                 {t === 'ALL' ? 'All Facilities' : t}
               </button>
@@ -128,10 +167,10 @@ export const RoomGrid: React.FC = () => {
           </div>
 
           {/* Status & Search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: '320px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: '1 1 260px', flexWrap: 'wrap' }}>
             <select
               className="form-select"
-              style={{ width: '160px' }}
+              style={{ width: '140px', flex: '1 1 120px' }}
               value={selectedStatus}
               onChange={e => setSelectedStatus(e.target.value)}
             >
@@ -141,7 +180,7 @@ export const RoomGrid: React.FC = () => {
               <option value="Under Maintenance">Under Maintenance</option>
             </select>
 
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'relative', flex: '2 1 160px' }}>
               <input
                 type="text"
                 placeholder="Search room no, GPU, projector..."
@@ -157,10 +196,11 @@ export const RoomGrid: React.FC = () => {
       </div>
 
       {/* Rooms Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+      <div className="cards-grid-auto" style={{ marginBottom: '2.5rem' }}>
         {filteredRooms.map(room => {
           const isAvailable = room.currentStatus === 'Available';
           const isOccupied = room.currentStatus === 'Occupied';
+          const isFacultyDesignated = facultyAssignedRoomInfo.room.id === room.id;
 
           return (
             <div
@@ -171,13 +211,16 @@ export const RoomGrid: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                borderTop: `4px solid ${isAvailable ? 'var(--accent-emerald)' : isOccupied ? 'var(--accent-rose)' : 'var(--accent-amber)'}`
+                borderTop: `4px solid ${isAvailable ? 'var(--accent-emerald)' : isOccupied ? 'var(--accent-rose)' : 'var(--accent-amber)'}`,
+                border: isFacultyDesignated ? '1.5px solid rgba(99, 102, 241, 0.45)' : undefined,
+                boxShadow: isFacultyDesignated ? '0 0 16px rgba(99, 102, 241, 0.12)' : undefined,
+                position: 'relative'
               }}
             >
               <div>
                 {/* Top Row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span 
                       style={{ 
                         fontFamily: 'var(--font-mono)', 
@@ -194,16 +237,21 @@ export const RoomGrid: React.FC = () => {
                     <span className="badge badge-indigo" style={{ fontSize: '0.7rem' }}>
                       {room.type}
                     </span>
+                    {isFacultyDesignated && (
+                      <span className="badge badge-emerald" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <CheckCircle size={11} /> Designated Facility
+                      </span>
+                    )}
                   </div>
                   {getStatusBadge(room.currentStatus)}
                 </div>
 
                 {/* Name & Location */}
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.35rem' }}>
                   {room.name}
                 </h3>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                  📍 {room.floor} • Seating Capacity: <strong>{room.capacity} students</strong>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: isOccupied ? '0.85rem' : '1.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  📍 {room.floor}
                 </div>
 
                 {/* Live Occupant / Schedule Status */}
@@ -234,30 +282,6 @@ export const RoomGrid: React.FC = () => {
                     )}
                   </div>
                 )}
-
-                {/* Facilities List */}
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
-                    Equipment & Amenities
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                    {room.facilities.map((fac, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          fontSize: '0.75rem',
-                          background: 'var(--bg-input)',
-                          border: '1px solid var(--border-subtle)',
-                          padding: '0.2rem 0.55rem',
-                          borderRadius: 'var(--radius-sm)',
-                          color: 'var(--text-secondary)'
-                        }}
-                      >
-                        ✓ {fac}
-                      </span>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* Action Buttons & Status Toggle */}
@@ -265,10 +289,10 @@ export const RoomGrid: React.FC = () => {
                 {isAvailable && (
                   <button
                     onClick={() => handleOpenBooking(room)}
-                    className="btn btn-secondary btn-sm"
+                    className={isFacultyDesignated ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
                     style={{ flex: 1 }}
                   >
-                    <CalendarCheck size={14} /> Book Slot
+                    <CalendarCheck size={14} /> {isFacultyDesignated ? 'Book Designated Slot' : 'Book Slot'}
                   </button>
                 )}
 
@@ -293,12 +317,36 @@ export const RoomGrid: React.FC = () => {
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Upcoming Room Reservations</h3>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Room Reservation Records</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
               Official bookings requested by faculty, students, and departmental committees
             </p>
           </div>
-          <span className="badge badge-indigo">{bookings.length} Bookings</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span className="badge badge-indigo">{bookings.length} Bookings</span>
+            {bookings.length > 0 && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to clear all reservation records?')) {
+                    clearAllBookings();
+                  }
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '0.25rem 0.65rem',
+                  color: 'var(--accent-rose)',
+                  borderColor: 'rgba(244, 63, 94, 0.25)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}
+                title="Clear all reservation records"
+              >
+                <Trash2 size={12} /> Clear All
+              </button>
+            )}
+          </div>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -310,30 +358,70 @@ export const RoomGrid: React.FC = () => {
                 <th style={{ padding: '0.75rem 1rem' }}>Applicant</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Date & Time Slot</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Status</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.map(b => (
-                <tr key={b.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <td style={{ padding: '0.85rem 1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                    {b.roomNumber}
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem' }}>
-                    {b.purpose}
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem', color: 'var(--text-secondary)' }}>
-                    {b.bookedBy}
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
-                    {b.date} ({b.startTime} - {b.endTime})
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem' }}>
-                    <span className="badge badge-emerald">
-                      <CheckCircle size={12} /> {b.status}
-                    </span>
+              {bookings.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No room reservation records found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                bookings.map(b => (
+                  <tr key={b.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '0.85rem 1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                      {b.roomNumber}
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      {b.purpose}
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem', color: 'var(--text-secondary)' }}>
+                      {b.bookedBy}
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
+                      {b.date} ({b.startTime} - {b.endTime})
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <span className="badge badge-emerald">
+                        <CheckCircle size={12} /> {b.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
+                      <button
+                        onClick={() => deleteRoomBooking(b.id)}
+                        className="btn btn-secondary btn-sm"
+                        title={`Delete reservation for ${b.roomNumber}`}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          color: 'var(--accent-rose)',
+                          borderColor: 'rgba(244, 63, 94, 0.3)',
+                          background: 'rgba(244, 63, 94, 0.08)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          borderRadius: 'var(--radius-sm)',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(244, 63, 94, 0.2)';
+                          e.currentTarget.style.borderColor = 'var(--accent-rose)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'rgba(244, 63, 94, 0.08)';
+                          e.currentTarget.style.borderColor = 'rgba(244, 63, 94, 0.3)';
+                        }}
+                      >
+                        <Trash2 size={13} />
+                        <span>Delete</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

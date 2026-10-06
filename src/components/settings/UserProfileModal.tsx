@@ -66,43 +66,49 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
         <div 
           className="glass-panel"
           style={{
-            padding: '1.25rem',
+            padding: '1rem',
             background: 'var(--bg-input)',
             display: 'flex',
             alignItems: 'center',
-            gap: '1.25rem',
-            borderRadius: 'var(--radius-md)'
+            gap: '1rem',
+            borderRadius: 'var(--radius-md)',
+            flexWrap: 'wrap'
           }}
         >
-          <img
-            src={currentUser.avatar}
-            alt={currentUser.name}
+          <div
             style={{
-              width: '64px',
-              height: '64px',
+              width: '56px',
+              height: '56px',
               borderRadius: '50%',
-              objectFit: 'cover',
-              border: '3px solid var(--accent-primary)'
+              background: 'rgba(99, 102, 241, 0.15)',
+              border: '3px solid var(--accent-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-primary)',
+              flexShrink: 0
             }}
-          />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <h4 style={{ fontSize: '1.15rem' }}>{currentUser.name}</h4>
+          >
+            <UserIcon size={28} />
+          </div>
+          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <h4 style={{ fontSize: '1.1rem' }}>{currentUser.name}</h4>
               <span className={`badge ${currentUser.role === 'admin' ? 'badge-rose' : currentUser.role === 'faculty' ? 'badge-indigo' : 'badge-emerald'}`}>
                 {getRoleIcon(currentUser.role)}
                 {getRoleLabel(currentUser.role)}
               </span>
             </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
               {currentUser.designation} ({currentUser.branchName || (currentUser.branchId === 'branch-cse' ? 'English' : 'Academic Department')})
             </div>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <Mail size={13} /> {currentUser.email}
               </span>
-              {currentUser.phone && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Phone size={13} /> {currentUser.phone}
+              {currentUser.qualification && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--accent-primary)' }}>
+                  <GraduationCap size={13} /> {currentUser.qualification}
                 </span>
               )}
             </div>
@@ -127,14 +133,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '0.85rem 1rem',
+                    padding: '0.75rem 0.95rem',
                     background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-input)',
                     border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
                     borderRadius: 'var(--radius-md)',
                     cursor: 'pointer',
                     color: 'var(--text-primary)',
                     textAlign: 'left',
-                    transition: 'all var(--tr-fast)'
+                    transition: 'all var(--tr-fast)',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem'
                   }}
                   onMouseEnter={e => {
                     if (!isSelected) e.currentTarget.style.borderColor = 'var(--accent-indigo)';
@@ -143,20 +151,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     if (!isSelected) e.currentTarget.style.borderColor = 'var(--border-subtle)';
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{user.name}</div>
-                      <div style={{ fontSize: '0.775rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: '1 1 180px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '50%',
+                        background: 'rgba(99, 102, 241, 0.12)',
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--accent-primary)',
+                        flexShrink: 0
+                      }}
+                    >
+                      <UserIcon size={20} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{user.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', overflowWrap: 'break-word' }}>
                         {user.designation} ({displayBranchName})
                       </div>
+                      {user.qualification && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                          {user.qualification}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                     <span className={`badge ${user.role === 'admin' ? (user.isSuperAdmin ? 'badge-amber' : 'badge-rose') : user.role === 'faculty' ? 'badge-indigo' : 'badge-emerald'}`}>
                       {getRoleIcon(user.role)}
                       {user.isSuperAdmin ? 'SUPER ADMIN' : user.role === 'admin' ? 'HOD' : user.role.toUpperCase()}

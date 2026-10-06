@@ -7,7 +7,8 @@ import {
   Sparkles, 
   Award, 
   CheckCircle,
-  Filter
+  Filter,
+  AlertCircle
 } from 'lucide-react';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../context/AuthContext';
@@ -15,11 +16,13 @@ import { exportService } from '../../services/exportService';
 import { DepartmentEvent, EventCategory, EventStatus } from '../../types';
 import { EventCard } from './EventCard';
 import { EventModal } from './EventModal';
+import { calculateEventStatus, getEventDateTimes } from '../../utils/eventStatus';
 
 export const EventList: React.FC = () => {
-  const { events, selectedBranch, selectedBranchId, deleteEvent } = useDepartment();
+  const { events, branches, selectedBranch, selectedBranchId, deleteEvent } = useDepartment();
   const { canCreateEvents } = useAuth();
 
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -36,8 +39,11 @@ export const EventList: React.FC = () => {
     'Field Trip'
   ];
 
+  // Institution-wide query logic: fetch and display all created events across the entire institution
   const filteredEvents = events.filter(ev => {
-    if (ev.branchId !== selectedBranchId) return false;
+    // Optional department filter (defaults to ALL to show all institution events)
+    if (selectedBranchFilter !== 'ALL' && ev.branchId !== selectedBranchFilter) return false;
+
     if (selectedCategory !== 'ALL') {
       const matchExact = ev.category === selectedCategory;
       const matchLegacy = 
@@ -48,7 +54,14 @@ export const EventList: React.FC = () => {
         (selectedCategory === 'Field Trip' && ev.category === 'Industry Visit');
       if (!matchExact && !matchLegacy) return false;
     }
-    if (selectedStatus !== 'ALL' && ev.status !== selectedStatus) return false;
+    if (selectedStatus !== 'ALL') {
+      const effStatus = calculateEventStatus(ev);
+      if (selectedStatus === 'In Progress') {
+        if (effStatus !== 'In Progress' && effStatus !== 'Live') return false;
+      } else if (effStatus !== selectedStatus) {
+        return false;
+      }
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -56,14 +69,50 @@ export const EventList: React.FC = () => {
       const matchDesc = ev.description.toLowerCase().includes(q);
       const matchVenue = ev.venue.toLowerCase().includes(q);
       const matchCoord = ev.facultyCoordinator.toLowerCase().includes(q);
-      if (!matchTitle && !matchDesc && !matchVenue && !matchCoord) return false;
+      const matchBody = ev.organizingBody?.toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchVenue && !matchCoord && !matchBody) return false;
     }
 
     return true;
   });
 
+  // Partition into Upcoming on Top (soonest first) and Completed on Bottom (most recent first)
+  const upcomingEvents = filteredEvents
+    .filter(ev => {
+      const status = calculateEventStatus(ev);
+      return status === 'Upcoming' || status === 'In Progress' || status === 'Live';
+    })
+    .sort((a, b) => {
+      const timeA = getEventDateTimes(a).start?.getTime() || 0;
+      const timeB = getEventDateTimes(b).start?.getTime() || 0;
+      return timeA - timeB;
+    });
+
+  const completedEvents = filteredEvents
+    .filter(ev => {
+      const status = calculateEventStatus(ev);
+      return status === 'Completed';
+    })
+    .sort((a, b) => {
+      const timeA = getEventDateTimes(a).end?.getTime() || 0;
+      const timeB = getEventDateTimes(b).end?.getTime() || 0;
+      return timeB - timeA;
+    });
+
+  const otherEvents = filteredEvents
+    .filter(ev => {
+      const status = calculateEventStatus(ev);
+      return status !== 'Upcoming' && status !== 'In Progress' && status !== 'Live' && status !== 'Completed';
+    })
+    .sort((a, b) => {
+      const timeA = getEventDateTimes(a).start?.getTime() || 0;
+      const timeB = getEventDateTimes(b).start?.getTime() || 0;
+      return timeB - timeA;
+    });
+
   const handleExportCSV = () => {
-    exportService.exportEventsToCSV(filteredEvents, selectedBranch.name);
+    const sortedForExport = [...upcomingEvents, ...completedEvents, ...otherEvents];
+    exportService.exportEventsToCSV(sortedForExport, 'All Institution Departments');
   };
 
   const handleEditEvent = (event: DepartmentEvent) => {
@@ -77,15 +126,15 @@ export const EventList: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Department Events & Programs</h1>
-            <span className="badge badge-indigo">{selectedBranch.code}</span>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Events & Programs</h1>
+            <span className="badge badge-indigo">All Institution ({events.length})</span>
           </div>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            Organize collegiate hackathons, technical workshops, guest lecture series, academic assessments, and symposiums.
+            Explore collegiate hackathons, technical workshops, guest lectures, and symposiums across all departments.
           </p>
         </div>
 
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="no-print header-actions-row">
           <button onClick={handleExportCSV} className="btn btn-secondary">
             <Download size={16} /> Export Events (CSV)
           </button>
@@ -116,37 +165,52 @@ export const EventList: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
           {/* Category Tabs */}
-          <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', flex: 1, paddingBottom: '2px' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', flex: '1 1 280px', paddingBottom: '2px', scrollbarWidth: 'none' }}>
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`btn btn-sm ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ whiteSpace: 'nowrap' }}
               >
                 {cat === 'ALL' ? 'All Categories' : cat}
               </button>
             ))}
           </div>
 
-          {/* Status Dropdown & Search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: '320px' }}>
+          {/* Department, Status Dropdown & Search */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: '1 1 360px', flexWrap: 'wrap' }}>
             <select
               className="form-select"
-              style={{ width: '150px' }}
+              style={{ minWidth: '150px', flex: '1 1 130px' }}
+              value={selectedBranchFilter}
+              onChange={e => setSelectedBranchFilter(e.target.value)}
+              title="Filter by Department"
+            >
+              <option value="ALL">All Departments</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+
+            <select
+              className="form-select"
+              style={{ width: '130px', flex: '1 1 110px' }}
               value={selectedStatus}
               onChange={e => setSelectedStatus(e.target.value)}
             >
               <option value="ALL">All Status</option>
               <option value="Upcoming">Upcoming</option>
-              <option value="Live">Live Now</option>
+              <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
               <option value="Postponed">Postponed</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
 
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'relative', flex: '2 1 160px' }}>
               <input
                 type="text"
-                placeholder="Search event, venue..."
+                placeholder="Search event, venue, dept..."
                 className="form-input"
                 style={{ paddingLeft: '2.2rem' }}
                 value={searchQuery}
@@ -168,15 +232,117 @@ export const EventList: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
-          {filteredEvents.map(event => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onEdit={handleEditEvent}
-              onDelete={deleteEvent}
-            />
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+          {/* Upcoming Events (Top) */}
+          {upcomingEvents.length > 0 && (
+            <div>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  marginBottom: '1.25rem',
+                  paddingBottom: '0.65rem',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <CalendarRange size={20} color="var(--accent-indigo)" />
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Upcoming Events</h2>
+                  <span className="badge badge-indigo">{upcomingEvents.length}</span>
+                </div>
+                <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                  Scheduled programs & upcoming competitions
+                </span>
+              </div>
+
+              <div className="cards-grid-auto">
+                {upcomingEvents.map(event => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    onEdit={handleEditEvent}
+                    onDelete={deleteEvent}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Completed Events (Bottom) */}
+          {completedEvents.length > 0 && (
+            <div>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  marginBottom: '1.25rem',
+                  paddingBottom: '0.65rem',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <CheckCircle size={20} color="#10b981" />
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Completed Events</h2>
+                  <span className="badge badge-cyan">{completedEvents.length}</span>
+                </div>
+                <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                  Past institutional programs & archives
+                </span>
+              </div>
+
+              <div className="cards-grid-auto">
+                {completedEvents.map(event => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    onEdit={handleEditEvent}
+                    onDelete={deleteEvent}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Postponed / Cancelled Events (if any) */}
+          {otherEvents.length > 0 && (
+            <div>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  marginBottom: '1.25rem',
+                  paddingBottom: '0.65rem',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <AlertCircle size={20} color="#f59e0b" />
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Postponed & Cancelled</h2>
+                  <span className="badge badge-amber">{otherEvents.length}</span>
+                </div>
+              </div>
+
+              <div className="cards-grid-auto">
+                {otherEvents.map(event => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    onEdit={handleEditEvent}
+                    onDelete={deleteEvent}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

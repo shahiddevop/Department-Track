@@ -68,7 +68,7 @@ export const isSlotAssignedToUser = (slot: TimetableSlot, user: User): boolean =
 
 /**
  * Determines if a user's timetable should be strictly account-specific.
- * - Raisa Tahseen (HOD/Admin): STRICTLY account-specific
+ * - Dr. P.Shahnaz (HOD/Admin): STRICTLY account-specific
  * - Faculty members (Dr. Vikram Verma, Prof. Ananya Roy, etc.): STRICTLY account-specific
  * - Other teaching HODs: STRICTLY account-specific
  * - Dean / Super Admin (Dr. Alistair Vance): Can view all timetables or filter by faculty
@@ -80,8 +80,8 @@ export const isAccountSpecificUser = (user: User): boolean => {
   if (user.isSuperAdmin) return false;
   // Students view student batch schedules
   if (user.role === 'student') return false;
-  // Raisa Tahseen (HOD/Admin)
-  if (user.name.toLowerCase().includes('raisa') || (user.email && user.email.toLowerCase().includes('raisa')) || user.id === 'user-1') {
+  // Dr. P.Shahnaz (HOD/Admin)
+  if (user.name.toLowerCase().includes('shahnaz') || user.name.toLowerCase().includes('raisa') || (user.email && (user.email.toLowerCase().includes('shahnaz') || user.email.toLowerCase().includes('raisa'))) || user.id === 'user-1') {
     return true;
   }
   // All faculty members

@@ -1,22 +1,22 @@
-import { 
-  Branch, 
-  User, 
-  Room, 
-  TimetableSlot, 
-  DailyTopicLog, 
-  DepartmentEvent, 
-  RoomBooking, 
-  Notification 
+import {
+  Branch,
+  User,
+  Room,
+  TimetableSlot,
+  DailyTopicLog,
+  DepartmentEvent,
+  RoomBooking,
+  Notification
 } from '../types';
-import { 
-  INITIAL_BRANCHES, 
-  INITIAL_USERS, 
-  INITIAL_ROOMS, 
-  INITIAL_TIMETABLE, 
-  INITIAL_TOPIC_LOGS, 
-  INITIAL_EVENTS, 
-  INITIAL_BOOKINGS, 
-  INITIAL_NOTIFICATIONS 
+import {
+  INITIAL_BRANCHES,
+  INITIAL_USERS,
+  INITIAL_ROOMS,
+  INITIAL_TIMETABLE,
+  INITIAL_TOPIC_LOGS,
+  INITIAL_EVENTS,
+  INITIAL_BOOKINGS,
+  INITIAL_NOTIFICATIONS
 } from './mockData';
 
 const STORAGE_KEYS = {
@@ -46,25 +46,26 @@ export const storageService = {
 
       parsed.forEach(b => {
         // English department
-        if (b.id === 'branch-cse') {
+        if (b.id === 'branch-cse' || b.code === 'ENG' || (b.name && b.name.toLowerCase().includes('english'))) {
+          b.id = 'branch-cse';
           b.code = 'ENG';
           b.name = 'English';
           b.description = 'Premier department specializing in English Language, Literature, Linguistics, and Business Communication.';
           b.totalFaculty = 12;
-          if (b.hodName && (b.hodName.includes('Rajesh') || b.hodName.includes('Sharma'))) {
-            b.hodName = 'Raisa Tahseen';
-          }
+          b.hodName = 'Dr. P.Shahnaz';
+          b.hodEmail = 'p.shahnaz@gmail.com';
+          b.color = '#6366f1';
           updated = true;
         }
 
-        // Replace Artificial Intelligence -> Department of Computer Science
-        if (b.id === 'branch-aids' || b.id === 'branch-cs' || b.code === 'AI & DS' || (b.name && b.name.includes('Artificial Intelligence'))) {
+        // Replace Artificial Intelligence / CS -> Department of Computer Science
+        if (b.id === 'branch-aids' || b.id === 'branch-cs' || b.code === 'CS' || b.code === 'AI & DS' || (b.name && (b.name.toLowerCase().includes('computer science') || b.name.includes('Artificial Intelligence')))) {
           b.id = 'branch-cs';
           b.code = 'CS';
           b.name = 'Department of Computer Science';
           b.description = 'Premier department of Computer Science offering cutting-edge education in Software Engineering, Algorithms, Operating Systems, Cloud Computing, and AI.';
-          b.hodName = 'Dr. Priya Sundaram';
-          b.hodEmail = 'priya.sundaram@college.edu';
+          b.hodName = 'S. Latha Rani';
+          b.hodEmail = 's.latharani@gmail.com';
           b.color = '#8b5cf6';
           b.totalFaculty = 22;
           b.totalStudents = 420;
@@ -72,14 +73,14 @@ export const storageService = {
           updated = true;
         }
 
-        // Replace Electronics & Communication -> Dept of Electronics and Physics
-        if (b.id === 'branch-ece' || b.id === 'branch-ep' || b.code === 'ECE' || (b.name && b.name.includes('Electronics & Communication'))) {
+        // Replace Electronics & Communication / EP -> Physics & Electronics
+        if (b.id === 'branch-ece' || b.id === 'branch-ep' || b.code === 'ECE' || b.code === 'EP' || (b.name && (b.name.toLowerCase().includes('physics') || b.name.toLowerCase().includes('electronics')))) {
           b.id = 'branch-ep';
           b.code = 'EP';
-          b.name = 'Dept of Electronics and Physics';
+          b.name = 'Physics & Electronics';
           b.description = 'Interdisciplinary program integrating Solid State Devices, Quantum Physics, Optics, Circuit Design, and Applied Electronics.';
-          b.hodName = 'Dr. K. V. Ramanathan';
-          b.hodEmail = 'kv.raman@college.edu';
+          b.hodName = 'Dr. K.S.R Chandra Sekhar';
+          b.hodEmail = 'ksr.chandrasekhar@gmail.com';
           b.color = '#ec4899';
           b.totalFaculty = 20;
           b.totalStudents = 360;
@@ -87,18 +88,103 @@ export const storageService = {
           updated = true;
         }
 
-        // Replace Information Technology -> Dept Microbiology & Biotechnology
-        if (b.id === 'branch-it' || b.id === 'branch-mb' || b.code === 'IT' || (b.name && b.name.includes('Information Technology'))) {
+        // Replace Information Technology / MB -> Microbiology & Biotechnology
+        if (b.id === 'branch-it' || b.id === 'branch-mb' || b.code === 'IT' || b.code === 'MB & BT' || (b.name && (b.name.toLowerCase().includes('microbiology') || b.name.toLowerCase().includes('biotechnology')))) {
           b.id = 'branch-mb';
           b.code = 'MB & BT';
-          b.name = 'Dept Microbiology & Biotechnology';
+          b.name = 'Microbiology & Biotechnology';
           b.description = 'Advanced research and education in Microbial Genomics, Applied Biotechnology, Immunology, and Bioprocess Engineering.';
-          b.hodName = 'Dr. S. K. Mahapatra';
-          b.hodEmail = 'sk.mahapatra@college.edu';
+          b.hodName = 'H.N Prasanna';
+          b.hodEmail = 'hn.prasanna@gmail.com';
           b.color = '#06b6d4';
           b.totalFaculty = 16;
           b.totalStudents = 300;
           b.establishedYear = 2008;
+          updated = true;
+        }
+
+        // Mathematics
+        if (b.id === 'branch-math' || b.code === 'MATH' || (b.name && b.name.toLowerCase().includes('mathematics'))) {
+          b.id = 'branch-math';
+          b.code = 'MATH';
+          b.name = 'Department of Mathematics';
+          b.hodName = 'Dr. T. Mohan Reddy';
+          b.hodEmail = 't.mohanreddy@gmail.com';
+          updated = true;
+        }
+
+        // Statistics
+        if (b.id === 'branch-stat' || b.code === 'STAT' || (b.name && b.name.toLowerCase().includes('statistics'))) {
+          b.id = 'branch-stat';
+          b.code = 'STAT';
+          b.name = 'Department of Statistics';
+          b.hodName = 'I. Kalyani';
+          b.hodEmail = 'i.kalyani@gmail.com';
+          updated = true;
+        }
+
+        // Zoology
+        if (b.id === 'branch-zoo' || b.code === 'ZOO' || (b.name && b.name.toLowerCase().includes('zoology'))) {
+          b.id = 'branch-zoo';
+          b.code = 'ZOO';
+          b.name = 'Department of Zoology';
+          b.hodName = 'Dr. C.S. Sreenivas Rao';
+          b.hodEmail = 'cs.sreenivasrao@gmail.com';
+          updated = true;
+        }
+
+        // Telugu
+        if (b.id === 'branch-tel' || b.code === 'TEL' || (b.name && b.name.toLowerCase().includes('telugu'))) {
+          b.id = 'branch-tel';
+          b.code = 'TEL';
+          b.name = 'Department of Telugu';
+          b.hodName = 'N.Y. Swamy';
+          b.hodEmail = 'ny.swamy@gmail.com';
+          updated = true;
+        }
+
+        // Arabic
+        if (b.id === 'branch-arb' || b.code === 'ARB' || (b.name && b.name.toLowerCase().includes('arabic'))) {
+          b.id = 'branch-arb';
+          b.code = 'ARB';
+          b.name = 'Department of Arabic';
+          b.hodName = 'TS MD Moin';
+          b.hodEmail = 'ts.mdmoin@gmail.com';
+          updated = true;
+        }
+
+        // Hindi
+        if (b.id === 'branch-hin' || b.code === 'HIN' || (b.name && b.name.toLowerCase().includes('hindi'))) {
+          b.id = 'branch-hin';
+          b.code = 'HIN';
+          b.name = 'Department of Hindi';
+          b.hodName = 'SK Mastan Vali';
+          b.hodEmail = 'sk.mastanvali@gmail.com';
+          updated = true;
+        }
+
+        // Commerce
+        if (b.id === 'branch-com' || b.code === 'COM' || (b.name && b.name.toLowerCase().includes('commerce'))) {
+          b.id = 'branch-com';
+          b.code = 'COM';
+          b.name = 'Department of Commerce';
+          b.hodName = 'M. Arjun';
+          b.hodEmail = 'm.arjun@gmail.com';
+          updated = true;
+        }
+
+        // Chemistry
+        if (b.id === 'branch-chem' || b.code === 'CHEM' || (b.name && b.name.toLowerCase().includes('chemistry'))) {
+          b.id = 'branch-chem';
+          b.code = 'CHEM';
+          b.name = 'Department of Chemistry';
+          b.hodName = 'K. Vasavi';
+          b.hodEmail = 'k.vasavi@gmail.com';
+          updated = true;
+        }
+
+        if (b.hodEmail && b.hodEmail.includes('@college.edu')) {
+          b.hodEmail = b.hodEmail.replace('@college.edu', '@gmail.com');
           updated = true;
         }
       });
@@ -133,6 +219,60 @@ export const storageService = {
         }
       }
 
+      // Add Department of Zoology if missing
+      if (!uniqueBranches.some(b => b.id === 'branch-zoo' || b.name.includes('Zoology') || b.code === 'ZOO')) {
+        const zooBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-zoo');
+        if (zooBranch) {
+          uniqueBranches.push(zooBranch);
+          updated = true;
+        }
+      }
+
+      // Add Department of Telugu if missing
+      if (!uniqueBranches.some(b => b.id === 'branch-tel' || b.name.includes('Telugu') || b.code === 'TEL')) {
+        const telBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-tel');
+        if (telBranch) {
+          uniqueBranches.push(telBranch);
+          updated = true;
+        }
+      }
+
+      // Add Department of Arabic if missing
+      if (!uniqueBranches.some(b => b.id === 'branch-arb' || b.name.includes('Arabic') || b.code === 'ARB')) {
+        const arbBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-arb');
+        if (arbBranch) {
+          uniqueBranches.push(arbBranch);
+          updated = true;
+        }
+      }
+
+      // Add Department of Hindi if missing
+      if (!uniqueBranches.some(b => b.id === 'branch-hin' || b.name.includes('Hindi') || b.code === 'HIN')) {
+        const hinBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-hin');
+        if (hinBranch) {
+          uniqueBranches.push(hinBranch);
+          updated = true;
+        }
+      }
+
+      // Add Department of Commerce if missing
+      if (!uniqueBranches.some(b => b.id === 'branch-com' || b.name.includes('Commerce') || b.code === 'COM')) {
+        const comBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-com');
+        if (comBranch) {
+          uniqueBranches.push(comBranch);
+          updated = true;
+        }
+      }
+
+      // Add Department of Chemistry if missing
+      if (!uniqueBranches.some(b => b.id === 'branch-chem' || b.name.includes('Chemistry') || b.code === 'CHEM')) {
+        const chemBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-chem');
+        if (chemBranch) {
+          uniqueBranches.push(chemBranch);
+          updated = true;
+        }
+      }
+
       if (updated || !localStorage.getItem(STORAGE_KEYS.BRANCHES)) {
         localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(uniqueBranches));
         localStorage.setItem('acadpulse_branches_v2', JSON.stringify(uniqueBranches));
@@ -155,9 +295,10 @@ export const storageService = {
       const parsed: User = JSON.parse(data);
       let updated = false;
 
-      if (parsed.name && (parsed.name.includes('Rajesh') || parsed.name.includes('Sharma')) && parsed.branchId === 'branch-cse') {
-        parsed.name = 'Raisa Tahseen';
-        parsed.email = 'raisa.tahseen@college.edu';
+      // English HOD initial migration from legacy mock names
+      if ((parsed.name && (parsed.name.includes('Raisa') || parsed.name.includes('Rajesh') || parsed.name.includes('Sharma'))) && parsed.branchId === 'branch-cse') {
+        parsed.name = 'Dr. P.Shahnaz';
+        parsed.email = 'p.shahnaz@gmail.com';
         parsed.branchName = 'English';
         updated = true;
       }
@@ -165,22 +306,123 @@ export const storageService = {
         parsed.branchName = 'English';
         updated = true;
       }
-      if (parsed.id === 'user-hod-aids' || parsed.branchId === 'branch-aids' || (parsed.branchName && parsed.branchName.includes('Artificial Intelligence'))) {
+
+      // Computer Science HOD
+      if (parsed.id === 'user-hod-aids' || parsed.id === 'user-hod-cs' || (parsed.name && parsed.name.includes('Sundaram')) || (parsed.branchName && parsed.branchName.includes('Artificial Intelligence'))) {
         parsed.id = 'user-hod-cs';
+        parsed.name = 'S. Latha Rani';
+        parsed.email = 's.latharani@gmail.com';
         parsed.branchId = 'branch-cs';
         parsed.branchName = 'Department of Computer Science';
         updated = true;
       }
-      if (parsed.id === 'user-hod-ece' || parsed.branchId === 'branch-ece' || (parsed.branchName && parsed.branchName.includes('Electronics & Communication'))) {
+
+      // Physics & Electronics HOD
+      if (parsed.id === 'user-hod-ece' || parsed.id === 'user-hod-ep' || (parsed.name && parsed.name.includes('Ramanathan')) || (parsed.branchName && parsed.branchName.includes('Electronics & Communication'))) {
         parsed.id = 'user-hod-ep';
+        parsed.name = 'Dr. K.S.R Chandra Sekhar';
+        parsed.email = 'ksr.chandrasekhar@gmail.com';
         parsed.branchId = 'branch-ep';
-        parsed.branchName = 'Dept of Electronics and Physics';
+        parsed.branchName = 'Physics & Electronics';
         updated = true;
       }
-      if (parsed.id === 'user-hod-it' || parsed.branchId === 'branch-it' || (parsed.branchName && parsed.branchName.includes('Information Technology'))) {
+
+      // Microbiology & Biotechnology HOD
+      if (parsed.id === 'user-hod-it' || parsed.id === 'user-hod-mb' || (parsed.name && parsed.name.includes('Mahapatra')) || (parsed.branchName && parsed.branchName.includes('Information Technology'))) {
         parsed.id = 'user-hod-mb';
+        parsed.name = 'H.N Prasanna';
+        parsed.email = 'hn.prasanna@gmail.com';
         parsed.branchId = 'branch-mb';
-        parsed.branchName = 'Dept Microbiology & Biotechnology';
+        parsed.branchName = 'Microbiology & Biotechnology';
+        updated = true;
+      }
+
+      // Mathematics HOD
+      if (parsed.id === 'user-hod-math' || (parsed.name && parsed.name.includes('Anuradha'))) {
+        parsed.name = 'Dr. T. Mohan Reddy';
+        parsed.email = 't.mohanreddy@gmail.com';
+        parsed.branchName = 'Department of Mathematics';
+        updated = true;
+      }
+
+      // Statistics HOD
+      if (parsed.id === 'user-hod-stat' || (parsed.name && parsed.name.includes('Sengupta'))) {
+        parsed.name = 'I. Kalyani';
+        parsed.email = 'i.kalyani@gmail.com';
+        parsed.branchName = 'Department of Statistics';
+        updated = true;
+      }
+
+      // Zoology HOD
+      if (parsed.id === 'user-hod-zoo' || (parsed.name && parsed.name.includes('Ramesh Chandra'))) {
+        parsed.name = 'Dr. C.S. Sreenivas Rao';
+        parsed.email = 'cs.sreenivasrao@gmail.com';
+        parsed.branchName = 'Department of Zoology';
+        updated = true;
+      }
+
+      // Telugu HOD
+      if (parsed.id === 'user-hod-tel' || (parsed.name && parsed.name.includes('Srinivas Rao') && !parsed.name.includes('C.S.'))) {
+        parsed.name = 'N.Y. Swamy';
+        parsed.email = 'ny.swamy@gmail.com';
+        parsed.branchName = 'Department of Telugu';
+        updated = true;
+      }
+
+      // Arabic HOD
+      if (parsed.id === 'user-hod-arb' || (parsed.name && parsed.name.includes('Mansoor'))) {
+        parsed.name = 'TS MD Moin';
+        parsed.email = 'ts.mdmoin@gmail.com';
+        parsed.branchName = 'Department of Arabic';
+        updated = true;
+      }
+
+      // Hindi HOD
+      if (parsed.id === 'user-hod-hin' || (parsed.name && parsed.name.includes('Meenakshi'))) {
+        parsed.name = 'SK Mastan Vali';
+        parsed.email = 'sk.mastanvali@gmail.com';
+        parsed.branchName = 'Department of Hindi';
+        updated = true;
+      }
+
+      // Commerce HOD
+      if (parsed.id === 'user-hod-com') {
+        parsed.name = 'M. Arjun';
+        parsed.email = 'm.arjun@gmail.com';
+        parsed.branchName = 'Department of Commerce';
+        updated = true;
+      }
+
+      // Chemistry HOD
+      if (parsed.id === 'user-hod-chem') {
+        parsed.name = 'K. Vasavi';
+        parsed.email = 'k.vasavi@gmail.com';
+        parsed.branchName = 'Department of Chemistry';
+        updated = true;
+      }
+      if (parsed.email && parsed.email.includes('@college.edu')) {
+        parsed.email = parsed.email.replace('@college.edu', '@gmail.com');
+        updated = true;
+      }
+      if (!parsed.qualification) {
+        const match = INITIAL_USERS.find(u => u.id === parsed.id || u.name === parsed.name);
+        parsed.qualification = match?.qualification || 'M.A., M.Phil., Ph.D.';
+        updated = true;
+      }
+      if (parsed.officeLocation === undefined) {
+        parsed.officeLocation = 'Faculty Block A, Cabin 204';
+        updated = true;
+      }
+      if (parsed.bio === undefined) {
+        parsed.bio = 'Specializing in Academic Curriculum Coordination, Literature, and Advanced Departmental Timetable Strategy.';
+        updated = true;
+      }
+      if (parsed.phone) {
+        delete parsed.phone;
+        updated = true;
+      }
+      if (parsed.avatar) {
+        parsed.avatar = '';
         updated = true;
       }
       if (parsed.role === 'student' || parsed.id === 'user-5') {
@@ -221,7 +463,39 @@ export const storageService = {
   getRooms: (): Room[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ROOMS);
-      return data ? JSON.parse(data) : INITIAL_ROOMS;
+      if (!data) return INITIAL_ROOMS;
+      const parsed: Room[] = JSON.parse(data);
+
+      // Check if stored rooms contain legacy codes or titles
+      const hasOldRooms = parsed.some(r =>
+        r.number === 'LH-301' ||
+        r.number === 'LH-302' ||
+        r.id === 'room-lh301' ||
+        r.id === 'room-lh302' ||
+        (r.name && (r.name.includes('Alan Turing') || r.name.includes('Ada Lovelace') || r.name.includes('Full-Stack')))
+      );
+      if (hasOldRooms || parsed.length !== INITIAL_ROOMS.length) {
+        localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(INITIAL_ROOMS));
+        return INITIAL_ROOMS;
+      }
+
+      // Ensure Lab 4 is Computer Lab and Chemistry, Zoology, and Botany labs are Life Science
+      let typesUpdated = false;
+      parsed.forEach(r => {
+        if (r.id === 'room-lab4' && r.type !== 'Computer Lab') {
+          r.type = 'Computer Lab';
+          typesUpdated = true;
+        }
+        if ((r.id === 'room-chemlab' || r.id === 'room-zoolab-b2' || r.id === 'room-zoolab-b1' || r.id === 'room-botlab') && r.type !== 'Life Science') {
+          r.type = 'Life Science';
+          typesUpdated = true;
+        }
+      });
+      if (typesUpdated) {
+        localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(parsed));
+      }
+
+      return parsed;
     } catch {
       return INITIAL_ROOMS;
     }
@@ -234,7 +508,41 @@ export const storageService = {
   getTimetable: (): TimetableSlot[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TIMETABLE);
-      return data ? JSON.parse(data) : INITIAL_TIMETABLE;
+      if (!data) return INITIAL_TIMETABLE;
+      const parsed: TimetableSlot[] = JSON.parse(data);
+      let updated = false;
+
+      // Consolidate faculty migrations into a clean dictionary mapping
+      const facultyMap: Record<string, string> = {
+        'Raisa Tahseen': 'Dr. P.Shahnaz',
+        'Dr. Rajesh Sharma': 'Dr. P.Shahnaz',
+        'Dr. Ramesh Chandra': 'Dr. C.S. Sreenivas Rao',
+        'Dr. K. Srinivas Rao': 'N.Y. Swamy',
+        'Dr. Tariq Al-Mansoor': 'TS MD Moin',
+        'Dr. Meenakshi Pandey': 'SK Mastan Vali'
+      };
+
+      parsed.forEach(s => {
+        if (facultyMap[s.facultyName]) {
+          s.facultyName = facultyMap[s.facultyName];
+          updated = true;
+        } else if (s.facultyId === 'user-1' && s.branchId === 'branch-cse') {
+          s.facultyName = 'Dr. P.Shahnaz';
+          updated = true;
+        }
+      });
+
+      const newBranchIds = ['branch-zoo', 'branch-tel', 'branch-arb', 'branch-hin', 'branch-com', 'branch-chem'];
+      const missingBranchSlots = INITIAL_TIMETABLE.filter(s => newBranchIds.includes(s.branchId) && !parsed.some(existing => existing.id === s.id));
+      if (missingBranchSlots.length > 0) {
+        const merged = [...parsed, ...missingBranchSlots];
+        localStorage.setItem(STORAGE_KEYS.TIMETABLE, JSON.stringify(merged));
+        return merged;
+      }
+      if (updated) {
+        localStorage.setItem(STORAGE_KEYS.TIMETABLE, JSON.stringify(parsed));
+      }
+      return parsed;
     } catch {
       return INITIAL_TIMETABLE;
     }
@@ -247,7 +555,28 @@ export const storageService = {
   getTopicLogs: (): DailyTopicLog[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TOPIC_LOGS);
-      return data ? JSON.parse(data) : INITIAL_TOPIC_LOGS;
+      if (!data) return INITIAL_TOPIC_LOGS;
+      const parsed: DailyTopicLog[] = JSON.parse(data);
+      let updated = false;
+
+      parsed.forEach(l => {
+        if (l.facultyName === 'Raisa Tahseen' || (l.branchId === 'branch-cse' && l.subjectCode === 'CS503')) {
+          l.facultyName = 'Dr. P.Shahnaz';
+          updated = true;
+        }
+      });
+
+      const newBranchIds = ['branch-com', 'branch-chem'];
+      const missingBranchLogs = INITIAL_TOPIC_LOGS.filter(l => newBranchIds.includes(l.branchId) && !parsed.some(existing => existing.id === l.id));
+      if (missingBranchLogs.length > 0) {
+        const merged = [...parsed, ...missingBranchLogs];
+        localStorage.setItem(STORAGE_KEYS.TOPIC_LOGS, JSON.stringify(merged));
+        return merged;
+      }
+      if (updated) {
+        localStorage.setItem(STORAGE_KEYS.TOPIC_LOGS, JSON.stringify(parsed));
+      }
+      return parsed;
     } catch {
       return INITIAL_TOPIC_LOGS;
     }
@@ -260,7 +589,41 @@ export const storageService = {
   getEvents: (): DepartmentEvent[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.EVENTS);
-      return data ? JSON.parse(data) : INITIAL_EVENTS;
+      if (!data) return INITIAL_EVENTS;
+      const parsed: DepartmentEvent[] = JSON.parse(data);
+      let updated = false;
+
+      const coordinatorMap: Record<string, string> = {
+        'Raisa Tahseen': 'Dr. P.Shahnaz',
+        'Dr. Ramesh Chandra': 'Dr. C.S. Sreenivas Rao',
+        'Dr. K. Srinivas Rao': 'N.Y. Swamy',
+        'Dr. Tariq Al-Mansoor': 'TS MD Moin',
+        'Dr. Meenakshi Pandey': 'SK Mastan Vali'
+      };
+
+      parsed.forEach(e => {
+        if (coordinatorMap[e.facultyCoordinator]) {
+          e.facultyCoordinator = coordinatorMap[e.facultyCoordinator];
+          updated = true;
+        }
+        if (e.studentCoordinator === undefined) {
+          const matchInitial = INITIAL_EVENTS.find(init => init.id === e.id);
+          e.studentCoordinator = matchInitial?.studentCoordinator || '';
+          updated = true;
+        }
+      });
+
+      const newBranchIds = ['branch-zoo', 'branch-tel', 'branch-arb', 'branch-hin', 'branch-com', 'branch-chem'];
+      const missingBranchEvents = INITIAL_EVENTS.filter(e => newBranchIds.includes(e.branchId) && !parsed.some(existing => existing.id === e.id));
+      if (missingBranchEvents.length > 0) {
+        const merged = [...parsed, ...missingBranchEvents];
+        localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(merged));
+        return merged;
+      }
+      if (updated) {
+        localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(parsed));
+      }
+      return parsed;
     } catch {
       return INITIAL_EVENTS;
     }
@@ -273,7 +636,29 @@ export const storageService = {
   getBookings: (): RoomBooking[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
-      return data ? JSON.parse(data) : INITIAL_BOOKINGS;
+      if (!data) return INITIAL_BOOKINGS;
+      const parsed: RoomBooking[] = JSON.parse(data);
+      let updated = false;
+      parsed.forEach(b => {
+        if (b.bookedBy === 'Raisa Tahseen') {
+          b.bookedBy = 'Dr. P.Shahnaz';
+          updated = true;
+        }
+        if (b.roomId === 'room-lab101' || b.roomNumber === 'LAB-101') {
+          b.roomId = 'room-lab1';
+          b.roomNumber = 'LAB-1';
+          updated = true;
+        }
+        if (b.roomId === 'room-sh401' || b.roomNumber === 'SH-401' || b.roomId === 'room-aud1' || b.roomNumber === 'AUD-01') {
+          b.roomId = 'room-sh';
+          b.roomNumber = 'SEMINAR';
+          updated = true;
+        }
+      });
+      if (updated) {
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(parsed));
+      }
+      return parsed;
     } catch {
       return INITIAL_BOOKINGS;
     }
@@ -286,7 +671,19 @@ export const storageService = {
   getNotifications: (): Notification[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-      return data ? JSON.parse(data) : INITIAL_NOTIFICATIONS;
+      if (!data) return INITIAL_NOTIFICATIONS;
+      const parsed: Notification[] = JSON.parse(data);
+      let updated = false;
+      parsed.forEach(n => {
+        if (n.author && n.author.includes('Raisa Tahseen')) {
+          n.author = 'Dr. P.Shahnaz (HOD - English)';
+          updated = true;
+        }
+      });
+      if (updated) {
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(parsed));
+      }
+      return parsed;
     } catch {
       return INITIAL_NOTIFICATIONS;
     }

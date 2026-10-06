@@ -4,8 +4,8 @@ import {
   Calendar,
   Clock,
   MapPin,
-  Users,
   User,
+  Users,
   DollarSign,
   Sparkles,
   Edit3,
@@ -13,6 +13,7 @@ import {
   Tag
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { calculateEventStatus } from '../../utils/eventStatus';
 
 interface EventCardProps {
   event: DepartmentEvent;
@@ -22,14 +23,25 @@ interface EventCardProps {
 
 export const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete }) => {
   const { canCreateEvents } = useAuth();
-
-  const isFull = event.registeredCount >= event.maxSeats;
-  const fillPercentage = Math.min(100, Math.round((event.registeredCount / event.maxSeats) * 100));
+  const effectiveStatus = calculateEventStatus(event);
 
   const getStatusBadge = (status: EventStatus) => {
     switch (status) {
+      case 'In Progress':
       case 'Live':
-        return <span className="badge badge-emerald" style={{ animation: 'pulseGlow 2s infinite' }}>● Live Now</span>;
+        return (
+          <span 
+            className="badge badge-emerald" 
+            style={{ 
+              animation: 'pulseGlow 2s infinite',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}
+          >
+            ● In Progress
+          </span>
+        );
       case 'Upcoming':
         return <span className="badge badge-indigo">Upcoming</span>;
       case 'Completed':
@@ -38,6 +50,8 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete })
         return <span className="badge badge-amber">Postponed</span>;
       case 'Cancelled':
         return <span className="badge badge-rose">Cancelled</span>;
+      default:
+        return <span className="badge badge-indigo">{status}</span>;
     }
   };
 
@@ -91,7 +105,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete })
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            {getStatusBadge(event.status)}
+            {getStatusBadge(effectiveStatus)}
             {event.budget > 0 && (
               <span className="badge badge-indigo" style={{ fontSize: '0.7rem' }}>
                 ₹{event.budget.toLocaleString()}
@@ -151,42 +165,21 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete })
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <User size={15} style={{ color: 'var(--text-muted)' }} />
+            <User size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
             <span>Faculty Lead: <strong>{event.facultyCoordinator}</strong></span>
           </div>
+
+          {Boolean(event.studentCoordinator && event.studentCoordinator.trim()) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Users size={15} style={{ color: '#8b5cf6', flexShrink: 0 }} />
+              <span>Student Lead / Coordinator: <strong>{event.studentCoordinator.trim()}</strong></span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Footer: Registration Bar & Actions */}
+      {/* Footer: Actions */}
       <div>
-        {/* Progress Bar */}
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.3rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Registration Capacity:</span>
-            <span style={{ fontWeight: 700, color: isFull ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>
-              {event.registeredCount} / {event.maxSeats} seats ({fillPercentage}%)
-            </span>
-          </div>
-          <div
-            style={{
-              width: '100%',
-              height: '6px',
-              background: 'var(--bg-input)',
-              borderRadius: 'var(--radius-full)',
-              overflow: 'hidden'
-            }}
-          >
-            <div
-              style={{
-                width: `${fillPercentage}%`,
-                height: '100%',
-                background: isFull ? 'var(--accent-rose)' : 'var(--grad-primary)',
-                borderRadius: 'var(--radius-full)',
-                transition: 'width 0.4s ease'
-              }}
-            />
-          </div>
-        </div>
 
         {/* Action Buttons */}
         {canCreateEvents && (

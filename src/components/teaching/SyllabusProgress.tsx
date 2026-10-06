@@ -18,7 +18,7 @@ export const SyllabusProgress: React.FC<SyllabusProgressProps> = ({
   if (subjects.length === 0) return null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+    <div className="cards-grid-auto" style={{ marginBottom: '1.5rem' }}>
       {subjects.map(sub => {
         const isHigh = sub.progressPercentage >= 70;
         const isMed = sub.progressPercentage >= 40 && sub.progressPercentage < 70;

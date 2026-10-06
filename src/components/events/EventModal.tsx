@@ -55,7 +55,7 @@ export const EventModal: React.FC<EventModalProps> = ({
       setEndTime(initialEvent.endTime);
       setVenue(initialEvent.venue);
       setFacultyCoordinator(initialEvent.facultyCoordinator);
-      setStudentCoordinator(initialEvent.studentCoordinator);
+      setStudentCoordinator(initialEvent.studentCoordinator || '');
       setTargetAudience(initialEvent.targetAudience);
       setBudget(initialEvent.budget);
       setStatus(initialEvent.status);
@@ -103,7 +103,7 @@ export const EventModal: React.FC<EventModalProps> = ({
       endTime,
       venue,
       facultyCoordinator,
-      studentCoordinator: studentCoordinator || 'Student Tech Council',
+      studentCoordinator: studentCoordinator.trim(),
       targetAudience,
       budget: Number(budget),
       status,
@@ -131,7 +131,7 @@ export const EventModal: React.FC<EventModalProps> = ({
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
           {/* Title & Category */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '1rem' }}>
+          <div className="form-grid-2-1">
             <div className="form-group">
               <label className="form-label">Event Title *</label>
               <input
@@ -162,9 +162,9 @@ export const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           {/* Program Date, Organizing Body & Times */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.35fr 1fr 1fr', gap: '0.75rem', alignItems: 'end' }}>
+          <div className="form-grid-4">
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ minHeight: '2.2rem', display: 'flex', alignItems: 'flex-end' }}>Program Date</label>
+              <label className="form-label">Program Date</label>
               <input
                 type="date"
                 required
@@ -175,7 +175,7 @@ export const EventModal: React.FC<EventModalProps> = ({
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ minHeight: '2.2rem', display: 'flex', alignItems: 'flex-end' }}>Organized By</label>
+              <label className="form-label">Organized By</label>
               <input
                 type="text"
                 className="form-input"
@@ -193,7 +193,7 @@ export const EventModal: React.FC<EventModalProps> = ({
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ minHeight: '2.2rem', display: 'flex', alignItems: 'flex-end' }}>Start Time</label>
+              <label className="form-label">Start Time</label>
               <input
                 type="text"
                 required
@@ -205,7 +205,7 @@ export const EventModal: React.FC<EventModalProps> = ({
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ minHeight: '2.2rem', display: 'flex', alignItems: 'flex-end' }}>End Time</label>
+              <label className="form-label">End Time</label>
               <input
                 type="text"
                 required
@@ -218,7 +218,7 @@ export const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           {/* Venue & Target Audience */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.5fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Venue / Hall Location *</label>
               <input
@@ -244,7 +244,7 @@ export const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           {/* Coordinators */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Faculty Coordinator *</label>
               <input
@@ -269,7 +269,7 @@ export const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           {/* Budget, Max Seats, Status */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-3">
             <div className="form-group">
               <label className="form-label">Budget Allocated ($/₹)</label>
               <input
@@ -300,7 +300,7 @@ export const EventModal: React.FC<EventModalProps> = ({
                 onChange={e => setStatus(e.target.value as EventStatus)}
               >
                 <option value="Upcoming">Upcoming</option>
-                <option value="Live">Live / Ongoing</option>
+                <option value="In Progress">In Progress</option>
                 <option value="Completed">Completed</option>
                 <option value="Postponed">Postponed</option>
                 <option value="Cancelled">Cancelled</option>

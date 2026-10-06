@@ -73,7 +73,7 @@ export const AnalyticsDashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="no-print header-actions-row">
           <button onClick={() => exportService.printCurrentView()} className="btn btn-secondary">
             <Printer size={16} /> Print Full Report
           </button>
@@ -81,7 +81,7 @@ export const AnalyticsDashboard: React.FC = () => {
       </div>
 
       {/* KPI Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+      <div className="dashboard-stats-grid">
         <StatCard
           title="Overall Syllabus Coverage"
           value={`${overallSyllabusPct}%`}
@@ -121,7 +121,7 @@ export const AnalyticsDashboard: React.FC = () => {
       </div>
 
       {/* Analytics Visual Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div className="analytics-two-col">
         {/* Chart 1: Syllabus Progress by Subject */}
         <div className="glass-panel" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>

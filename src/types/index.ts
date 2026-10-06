@@ -10,6 +10,9 @@ export interface User {
   branchName: string;
   avatar: string;
   phone?: string;
+  qualification?: string;
+  officeLocation?: string;
+  bio?: string;
   isSuperAdmin?: boolean;
 }
 
@@ -118,7 +121,7 @@ export type EventCategory =
 
 export type OrganizingBody = 'Dept' | 'Cell' | 'Committee' | 'Club' | (string & {});
 
-export type EventStatus = 'Upcoming' | 'Live' | 'Completed' | 'Postponed' | 'Cancelled';
+export type EventStatus = 'Upcoming' | 'Live' | 'In Progress' | 'Completed' | 'Postponed' | 'Cancelled';
 
 export interface DepartmentEvent {
   id: string;
@@ -150,7 +153,8 @@ export type RoomType =
   | 'Computer Lab' 
   | 'Hardware / IoT Lab' 
   | 'Seminar Hall' 
-  | 'Auditorium';
+  | 'Auditorium'
+  | 'Life Science';
 
 export type RoomStatus = 'Available' | 'Occupied' | 'Under Maintenance';
 
@@ -166,6 +170,8 @@ export interface Room {
   currentOccupant?: string;
   currentSubject?: string;
   currentSlotTime?: string;
+  branchId?: string;
+  branchName?: string;
 }
 
 export interface RoomBooking {

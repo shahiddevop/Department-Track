@@ -71,7 +71,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
           {/* Subject Code & Name */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+          <div className="form-grid-1-2">
             <div className="form-group">
               <label className="form-label">Subject Code *</label>
               <input
@@ -97,7 +97,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
           </div>
 
           {/* Instructor & Semester */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2-1">
             <div className="form-group">
               <label className="form-label">Assigned Instructor / Faculty *</label>
               <input
@@ -124,7 +124,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
           </div>
 
           {/* Units & Total Planned Hours */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Total Syllabus Units</label>
               <input
