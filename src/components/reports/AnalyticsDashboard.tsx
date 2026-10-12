@@ -1,12 +1,12 @@
 import React from 'react';
-import { 
-  BarChart3, 
-  Printer, 
-  TrendingUp, 
-  CheckCircle2, 
-  Clock, 
-  Users, 
-  Award, 
+import {
+  BarChart3,
+  Printer,
+  TrendingUp,
+  CheckCircle2,
+  Clock,
+  Users,
+  Award,
   BookOpen,
   Calendar,
   Layers,
@@ -17,14 +17,14 @@ import { exportService } from '../../services/exportService';
 import { StatCard } from '../common/StatCard';
 
 export const AnalyticsDashboard: React.FC = () => {
-  const { 
-    selectedBranch, 
-    timetable, 
-    topicLogs, 
-    events, 
-    rooms, 
-    subjectsProgress, 
-    selectedBranchId 
+  const {
+    selectedBranch,
+    timetable,
+    topicLogs,
+    events,
+    rooms,
+    subjectsProgress,
+    selectedBranchId
   } = useDepartment();
 
   // Metrics calculations
@@ -145,7 +145,7 @@ export const AnalyticsDashboard: React.FC = () => {
                     {sub.progressPercentage}%
                   </span>
                 </div>
-                <div 
+                <div
                   style={{
                     width: '100%',
                     height: '10px',
@@ -198,7 +198,7 @@ export const AnalyticsDashboard: React.FC = () => {
                       {fac.hours} hrs/week
                     </span>
                   </div>
-                  <div 
+                  <div
                     style={{
                       width: '100%',
                       height: '10px',

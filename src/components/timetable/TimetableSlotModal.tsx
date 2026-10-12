@@ -12,6 +12,7 @@ interface TimetableSlotModalProps {
   onClose: () => void;
   initialSlot?: TimetableSlot | null;
   defaultSemester?: number;
+  defaultSection?: string;
   defaultDay?: DayOfWeek;
   defaultPeriod?: number;
   defaultStartTime?: string;
@@ -34,6 +35,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
   onClose,
   initialSlot,
   defaultSemester = 5,
+  defaultSection = 'A',
   defaultDay = 'Monday',
   defaultPeriod = 1,
   defaultStartTime,
@@ -80,7 +82,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
       const foundP = CLASS_PERIODS.find(p => p.periodNumber === pNum);
       setSemester(defaultSemester);
       setDay(defaultDay);
-      setSection('A');
+      setSection(defaultSection || 'A');
       setPeriod(pNum);
       setStartTime(defaultStartTime || foundP?.defaultStartTime || '08:25');
       setEndTime(defaultEndTime || foundP?.defaultEndTime || '09:15');
@@ -91,7 +93,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
       setType('Lecture');
       setColor(COLOR_PALETTE[0]);
     }
-  }, [initialSlot, isOpen, defaultSemester, defaultDay, defaultPeriod, defaultStartTime, defaultEndTime, isAccountSpecific, currentUser.name]);
+  }, [initialSlot, isOpen, defaultSemester, defaultSection, defaultDay, defaultPeriod, defaultStartTime, defaultEndTime, isAccountSpecific, currentUser.name]);
 
   const handlePeriodChange = (pNum: number) => {
     setPeriod(pNum);
@@ -107,9 +109,13 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalFacultyName = isAccountSpecific ? currentUser.name : facultyName.trim();
-    if (!subjectCode.trim() || !subjectName.trim() || !finalFacultyName || !roomName.trim()) {
+    if (!subjectName.trim() || !finalFacultyName || !roomName.trim()) {
       return;
     }
+
+    const finalSubjectCode = subjectCode.trim()
+      ? subjectCode.toUpperCase()
+      : (subjectName.trim().slice(0, 6).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'SUB');
 
     const targetFacultyId = isAccountSpecific
       ? (currentUser.id || initialSlot?.facultyId || 'user-personal')
@@ -123,7 +129,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
       period: period > 0 ? period : undefined,
       startTime,
       endTime,
-      subjectCode: subjectCode.toUpperCase(),
+      subjectCode: finalSubjectCode,
       subjectName,
       facultyId: targetFacultyId,
       facultyName: finalFacultyName,
@@ -179,7 +185,7 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
                 value={section}
                 onChange={e => setSection(e.target.value)}
               >
-                {['A', 'B', 'C'].map(sec => (
+                {Array.from(new Set(['A', 'B', 'C', 'D', ...(section ? [section] : [])])).sort().map(sec => (
                   <option key={sec} value={sec}>Section {sec}</option>
                 ))}
               </select>
@@ -225,11 +231,12 @@ export const TimetableSlotModal: React.FC<TimetableSlotModalProps> = ({
           {/* Subject Code & Name */}
           <div className="form-grid-1-2">
             <div className="form-group">
-              <label className="form-label">Subject Code *</label>
+              <label className="form-label">
+                Subject Code <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Optional)</span>
+              </label>
               <input
                 type="text"
-                required
-                placeholder="e.g. CS501"
+                placeholder="e.g. CS501 (Optional)"
                 className="form-input"
                 value={subjectCode}
                 onChange={e => setSubjectCode(e.target.value)}

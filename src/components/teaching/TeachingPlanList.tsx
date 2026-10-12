@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { 
-  BookOpenCheck, 
-  Plus, 
-  Download, 
-  Search, 
-  Calendar, 
-  Clock, 
-  Users, 
-  Edit3, 
-  Trash2, 
-  CheckCircle2, 
-  AlertCircle, 
-  HelpCircle, 
+import {
+  BookOpenCheck,
+  Plus,
+  Download,
+  Search,
+  Calendar,
+  Clock,
+  Users,
+  Edit3,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle,
   FileSpreadsheet,
   Layers,
   Sparkles,
@@ -23,6 +23,7 @@ import { exportService } from '../../services/exportService';
 import { DailyTopicLog, TopicStatus, SubjectProgress } from '../../types';
 import { TopicLogModal } from './TopicLogModal';
 import { SubjectModal } from './SubjectModal';
+import { isLogAssignedToUser } from '../../utils/facultyMatching';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -38,21 +39,26 @@ const getDayName = (dateStr?: string): string => {
 };
 
 export const TeachingPlanList: React.FC = () => {
-  const { 
-    topicLogs, 
-    selectedBranch, 
-    selectedBranchId, 
+  const {
+    topicLogs,
+    selectedBranch,
+    selectedBranchId,
     deleteTopicLog,
     subjectsProgress,
     updateSubject,
     deleteSubject
   } = useDepartment();
 
-  const { canEditBranchContent } = useAuth();
+  const { currentUser, canEditBranchContent, isSuperAdmin } = useAuth();
   const canLogTopics = canEditBranchContent(selectedBranchId);
+
+  // Determine whether the current user is a faculty member (non-HOD, non-SuperAdmin)
+  // Faculty users should only see their own teaching logs
+  const isFacultyOnlyUser = currentUser.role === 'faculty' && !isSuperAdmin;
 
   // Filters State
   const [selectedSemester, setSelectedSemester] = useState<number | 'ALL'>('ALL');
+  const [selectedSection, setSelectedSection] = useState<string>('ALL');
   const [facultyFilter, setFacultyFilter] = useState<string>('ALL');
   const [selectedSubject, setSelectedSubject] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -78,13 +84,19 @@ export const TeachingPlanList: React.FC = () => {
     }
   };
 
-  // Extract unique subjects and faculties
-  const branchLogs = topicLogs.filter(l => l.branchId === selectedBranchId);
+  // Extract logs for this branch, then scope to the authenticated user if faculty
+  const allBranchLogs = topicLogs.filter(l => l.branchId === selectedBranchId);
+  const branchLogs = isFacultyOnlyUser
+    ? allBranchLogs.filter(log => isLogAssignedToUser(log, currentUser))
+    : allBranchLogs;
+
   const uniqueSubjects = Array.from(new Set(branchLogs.map(l => l.subjectCode))).filter(Boolean);
   const uniqueFaculties = Array.from(new Set(branchLogs.map(l => l.facultyName))).filter(Boolean);
+  const uniqueSections = Array.from(new Set(branchLogs.map(l => l.section).filter(Boolean))).sort();
 
   const filteredLogs = branchLogs.filter(log => {
     if (selectedSemester !== 'ALL' && log.semester !== selectedSemester) return false;
+    if (selectedSection !== 'ALL' && log.section !== selectedSection) return false;
     if (facultyFilter !== 'ALL' && log.facultyName !== facultyFilter) return false;
     if (selectedSubject !== 'ALL' && log.subjectCode !== selectedSubject) return false;
     if (selectedStatus !== 'ALL' && log.status !== selectedStatus) return false;
@@ -96,7 +108,8 @@ export const TeachingPlanList: React.FC = () => {
       const matchSummary = (log.topicsCoveredSummary || '').toLowerCase().includes(q);
       const matchSubject = log.subjectName.toLowerCase().includes(q) || log.subjectCode.toLowerCase().includes(q);
       const matchFaculty = log.facultyName.toLowerCase().includes(q);
-      if (!matchTitle && !matchSummary && !matchSubject && !matchFaculty) return false;
+      const matchSection = (log.section || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchSummary && !matchSubject && !matchFaculty && !matchSection) return false;
     }
 
     return true;
@@ -131,7 +144,7 @@ export const TeachingPlanList: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Daily Teaching Plans & Topic Logs</h1>
             <span className="badge badge-indigo">
-              {selectedBranch.code} • {selectedSemester === 'ALL' ? 'All Semesters' : `Sem ${selectedSemester}`}
+              {selectedBranch.code} • {selectedSemester === 'ALL' ? 'All Semesters' : `Sem ${selectedSemester}`} {selectedSection !== 'ALL' ? `• Sec ${selectedSection}` : ''}
             </span>
           </div>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
@@ -180,8 +193,31 @@ export const TeachingPlanList: React.FC = () => {
         </div>
       )}
 
+      {isFacultyOnlyUser && (
+        <div
+          className="no-print"
+          style={{
+            padding: '0.75rem 1.15rem',
+            borderRadius: 'var(--radius-md)',
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            fontSize: '0.85rem',
+            color: 'var(--text-secondary)'
+          }}
+        >
+          <Users size={16} color="var(--accent-emerald)" />
+          <span>
+            Showing only <strong>your</strong> teaching logs as <strong>{currentUser.name}</strong>. To view all department logs, contact your HOD for elevated access.
+          </span>
+        </div>
+      )}
+
       {/* Filter and Search Bar */}
-      <div 
+      <div
         className="glass-panel no-print"
         style={{
           padding: '1.25rem',
@@ -203,6 +239,21 @@ export const TeachingPlanList: React.FC = () => {
               <option value="ALL">All Semesters</option>
               {[1, 2, 3, 4, 5, 6].map(s => (
                 <option key={s} value={s}>Semester {s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section Filter */}
+          <div>
+            <label className="form-label" style={{ fontSize: '0.75rem' }}>Section</label>
+            <select
+              className="form-select"
+              value={selectedSection}
+              onChange={e => setSelectedSection(e.target.value)}
+            >
+              <option value="ALL">All Sections</option>
+              {Array.from(new Set(['A', 'B', 'C', 'D', ...uniqueSections])).sort().map(sec => (
+                <option key={sec} value={sec}>Section {sec}</option>
               ))}
             </select>
           </div>
@@ -307,10 +358,10 @@ export const TeachingPlanList: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div style={{ flex: '1 1 300px', minWidth: 0, maxWidth: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span 
-                      style={{ 
-                        fontFamily: 'var(--font-mono)', 
-                        fontWeight: 700, 
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 700,
                         fontSize: '0.85rem',
                         background: 'rgba(99, 102, 241, 0.15)',
                         color: 'var(--accent-indigo)',
@@ -323,6 +374,15 @@ export const TeachingPlanList: React.FC = () => {
                     <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                       {log.subjectName}
                     </span>
+                    {log.section && (
+                      <span
+                        className="badge badge-purple"
+                        style={{ fontSize: '0.75rem', fontWeight: 700 }}
+                        title={`Section ${log.section}`}
+                      >
+                        Section {log.section}
+                      </span>
+                    )}
                     <span className="badge badge-indigo">
                       Unit {log.unitNumber}
                     </span>

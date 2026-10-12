@@ -72,11 +72,15 @@ export const getFacultyAssignedRoom = ({
     : selectedBranchId;
   const deptName = currentUser?.branchName || 'Department';
 
-  // Super Admin / Dean: If explicitly selecting a room, honour it
-  if (currentUser?.isSuperAdmin && selectedRoom) {
+  // Explicitly selected room: if user clicked 'Book Slot' on any room card, dynamically honour that specific lab!
+  if (selectedRoom) {
+    const isDesignated = selectedRoom.branchId === deptId ||
+      (DEPARTMENT_DEFAULT_ROOMS[deptId] && DEPARTMENT_DEFAULT_ROOMS[deptId].roomId === selectedRoom.id);
     return {
       room: selectedRoom,
-      reason: `Fixed to ${selectedRoom.number} for Institutional Dean Administration.`,
+      reason: isDesignated
+        ? `Designated facility for ${deptName}: ${selectedRoom.number} (${selectedRoom.name}).`
+        : `Selected facility: ${selectedRoom.number} (${selectedRoom.name}).`,
       departmentName: deptName,
       isDirectAssignment: true
     };
@@ -91,8 +95,8 @@ export const getFacultyAssignedRoom = ({
       const targetSlot = labSlot || userSlots[0];
 
       // Match room by slot.roomId or room number in slot.roomName
-      const matchedRoom = rooms.find(r => 
-        r.id === targetSlot.roomId || 
+      const matchedRoom = rooms.find(r =>
+        r.id === targetSlot.roomId ||
         r.number.toLowerCase() === targetSlot.roomName.split(' ')[0].toLowerCase()
       );
 
@@ -121,21 +125,7 @@ export const getFacultyAssignedRoom = ({
     }
   }
 
-  // 3. Check selectedRoom if it belongs to faculty's department
-  if (selectedRoom) {
-    const isDeptMatch = selectedRoom.branchId === deptId || 
-      (DEPARTMENT_DEFAULT_ROOMS[deptId] && DEPARTMENT_DEFAULT_ROOMS[deptId].roomId === selectedRoom.id);
-    if (isDeptMatch) {
-      return {
-        room: selectedRoom,
-        reason: `Auto-fixed to ${selectedRoom.number} based on departmental allocation for ${deptName}.`,
-        departmentName: deptName,
-        isDirectAssignment: true
-      };
-    }
-  }
-
-  // 4. Check Department Mapping (by deptId)
+  // 3. Check Department Mapping (by deptId)
   if (deptId && DEPARTMENT_DEFAULT_ROOMS[deptId]) {
     const mapping = DEPARTMENT_DEFAULT_ROOMS[deptId];
     const deptRoom = rooms.find(r => r.id === mapping.roomId || r.number === mapping.roomNumber);
@@ -149,7 +139,7 @@ export const getFacultyAssignedRoom = ({
     }
   }
 
-  // 5. Check room by branchId property directly
+  // 4. Check room by branchId property directly
   if (deptId) {
     const directBranchRoom = rooms.find(r => r.branchId === deptId);
     if (directBranchRoom) {
@@ -160,16 +150,6 @@ export const getFacultyAssignedRoom = ({
         isDirectAssignment: true
       };
     }
-  }
-
-  // 6. If selectedRoom was provided, fallback to it
-  if (selectedRoom) {
-    return {
-      room: selectedRoom,
-      reason: `Fixed to ${selectedRoom.number} (${selectedRoom.name}).`,
-      departmentName: deptName,
-      isDirectAssignment: false
-    };
   }
 
   // 7. Ultimate Fallback: First room in list

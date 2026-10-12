@@ -18,6 +18,7 @@ import {
   INITIAL_BOOKINGS,
   INITIAL_NOTIFICATIONS
 } from './mockData';
+import { isDemoEvent } from '../utils/eventStatus';
 
 const STORAGE_KEYS = {
   BRANCHES: 'acadpulse_branches_v3',
@@ -26,7 +27,7 @@ const STORAGE_KEYS = {
   ROOMS: 'acadpulse_rooms_v2',
   TIMETABLE: 'acadpulse_timetable_v2',
   TOPIC_LOGS: 'acadpulse_topic_logs_v2',
-  EVENTS: 'acadpulse_events_v2',
+  EVENTS: 'adt_events_clean_v1',
   BOOKINGS: 'acadpulse_bookings_v2',
   NOTIFICATIONS: 'acadpulse_notifications_v2',
   THEME: 'acadpulse_theme_v2'
@@ -36,255 +37,68 @@ export const storageService = {
   // Branches
   getBranches: (): Branch[] => {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.BRANCHES) || localStorage.getItem('acadpulse_branches_v2');
-      if (!data) {
-        localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(INITIAL_BRANCHES));
-        return INITIAL_BRANCHES;
+      const data = localStorage.getItem(STORAGE_KEYS.BRANCHES) || localStorage.getItem('acadpulse_branches_v3') || localStorage.getItem('acadpulse_branches_v2');
+      let parsed: Branch[] = [];
+      if (data) {
+        try {
+          parsed = JSON.parse(data);
+        } catch {
+          parsed = [];
+        }
       }
-      const parsed: Branch[] = JSON.parse(data);
-      let updated = false;
 
-      parsed.forEach(b => {
-        // English department
-        if (b.id === 'branch-cse' || b.code === 'ENG' || (b.name && b.name.toLowerCase().includes('english'))) {
-          b.id = 'branch-cse';
-          b.code = 'ENG';
-          b.name = 'English';
-          b.description = 'Premier department specializing in English Language, Literature, Linguistics, and Business Communication.';
-          b.totalFaculty = 12;
-          b.hodName = 'Dr. P.Shahnaz';
-          b.hodEmail = 'p.shahnaz@gmail.com';
-          b.color = '#6366f1';
-          updated = true;
-        }
-
-        // Replace Artificial Intelligence / CS -> Department of Computer Science
-        if (b.id === 'branch-aids' || b.id === 'branch-cs' || b.code === 'CS' || b.code === 'AI & DS' || (b.name && (b.name.toLowerCase().includes('computer science') || b.name.includes('Artificial Intelligence')))) {
-          b.id = 'branch-cs';
-          b.code = 'CS';
-          b.name = 'Department of Computer Science';
-          b.description = 'Premier department of Computer Science offering cutting-edge education in Software Engineering, Algorithms, Operating Systems, Cloud Computing, and AI.';
-          b.hodName = 'S. Latha Rani';
-          b.hodEmail = 's.latharani@gmail.com';
-          b.color = '#8b5cf6';
-          b.totalFaculty = 22;
-          b.totalStudents = 420;
-          b.establishedYear = 2001;
-          updated = true;
-        }
-
-        // Replace Electronics & Communication / EP -> Physics & Electronics
-        if (b.id === 'branch-ece' || b.id === 'branch-ep' || b.code === 'ECE' || b.code === 'EP' || (b.name && (b.name.toLowerCase().includes('physics') || b.name.toLowerCase().includes('electronics')))) {
-          b.id = 'branch-ep';
-          b.code = 'EP';
-          b.name = 'Physics & Electronics';
-          b.description = 'Interdisciplinary program integrating Solid State Devices, Quantum Physics, Optics, Circuit Design, and Applied Electronics.';
-          b.hodName = 'Dr. K.S.R Chandra Sekhar';
-          b.hodEmail = 'ksr.chandrasekhar@gmail.com';
-          b.color = '#ec4899';
-          b.totalFaculty = 20;
-          b.totalStudents = 360;
-          b.establishedYear = 2002;
-          updated = true;
-        }
-
-        // Replace Information Technology / MB -> Microbiology & Biotechnology
-        if (b.id === 'branch-it' || b.id === 'branch-mb' || b.code === 'IT' || b.code === 'MB & BT' || (b.name && (b.name.toLowerCase().includes('microbiology') || b.name.toLowerCase().includes('biotechnology')))) {
-          b.id = 'branch-mb';
-          b.code = 'MB & BT';
-          b.name = 'Microbiology & Biotechnology';
-          b.description = 'Advanced research and education in Microbial Genomics, Applied Biotechnology, Immunology, and Bioprocess Engineering.';
-          b.hodName = 'H.N Prasanna';
-          b.hodEmail = 'hn.prasanna@gmail.com';
-          b.color = '#06b6d4';
-          b.totalFaculty = 16;
-          b.totalStudents = 300;
-          b.establishedYear = 2008;
-          updated = true;
-        }
-
-        // Mathematics
-        if (b.id === 'branch-math' || b.code === 'MATH' || (b.name && b.name.toLowerCase().includes('mathematics'))) {
-          b.id = 'branch-math';
-          b.code = 'MATH';
-          b.name = 'Department of Mathematics';
-          b.hodName = 'Dr. T. Mohan Reddy';
-          b.hodEmail = 't.mohanreddy@gmail.com';
-          updated = true;
-        }
-
-        // Statistics
-        if (b.id === 'branch-stat' || b.code === 'STAT' || (b.name && b.name.toLowerCase().includes('statistics'))) {
-          b.id = 'branch-stat';
-          b.code = 'STAT';
-          b.name = 'Department of Statistics';
-          b.hodName = 'I. Kalyani';
-          b.hodEmail = 'i.kalyani@gmail.com';
-          updated = true;
-        }
-
-        // Zoology
-        if (b.id === 'branch-zoo' || b.code === 'ZOO' || (b.name && b.name.toLowerCase().includes('zoology'))) {
-          b.id = 'branch-zoo';
-          b.code = 'ZOO';
-          b.name = 'Department of Zoology';
-          b.hodName = 'Dr. C.S. Sreenivas Rao';
-          b.hodEmail = 'cs.sreenivasrao@gmail.com';
-          updated = true;
-        }
-
-        // Telugu
-        if (b.id === 'branch-tel' || b.code === 'TEL' || (b.name && b.name.toLowerCase().includes('telugu'))) {
-          b.id = 'branch-tel';
-          b.code = 'TEL';
-          b.name = 'Department of Telugu';
-          b.hodName = 'N.Y. Swamy';
-          b.hodEmail = 'ny.swamy@gmail.com';
-          updated = true;
-        }
-
-        // Arabic
-        if (b.id === 'branch-arb' || b.code === 'ARB' || (b.name && b.name.toLowerCase().includes('arabic'))) {
-          b.id = 'branch-arb';
-          b.code = 'ARB';
-          b.name = 'Department of Arabic';
-          b.hodName = 'TS MD Moin';
-          b.hodEmail = 'ts.mdmoin@gmail.com';
-          updated = true;
-        }
-
-        // Hindi
-        if (b.id === 'branch-hin' || b.code === 'HIN' || (b.name && b.name.toLowerCase().includes('hindi'))) {
-          b.id = 'branch-hin';
-          b.code = 'HIN';
-          b.name = 'Department of Hindi';
-          b.hodName = 'SK Mastan Vali';
-          b.hodEmail = 'sk.mastanvali@gmail.com';
-          updated = true;
-        }
-
-        // Commerce
-        if (b.id === 'branch-com' || b.code === 'COM' || (b.name && b.name.toLowerCase().includes('commerce'))) {
-          b.id = 'branch-com';
-          b.code = 'COM';
-          b.name = 'Department of Commerce';
-          b.hodName = 'M. Arjun';
-          b.hodEmail = 'm.arjun@gmail.com';
-          updated = true;
-        }
-
-        // Chemistry
-        if (b.id === 'branch-chem' || b.code === 'CHEM' || (b.name && b.name.toLowerCase().includes('chemistry'))) {
-          b.id = 'branch-chem';
-          b.code = 'CHEM';
-          b.name = 'Department of Chemistry';
-          b.hodName = 'K. Vasavi';
-          b.hodEmail = 'k.vasavi@gmail.com';
-          updated = true;
-        }
-
-        if (b.hodEmail && b.hodEmail.includes('@college.edu')) {
-          b.hodEmail = b.hodEmail.replace('@college.edu', '@gmail.com');
-          updated = true;
-        }
+      // Initialize with ALL 12 core institutional departments from INITIAL_BRANCHES
+      const branchMap = new Map<string, Branch>();
+      INITIAL_BRANCHES.forEach(b => {
+        branchMap.set(b.id, { ...b });
       });
 
-      // Deduplicate by ID
-      const uniqueBranches: Branch[] = [];
-      const seenIds = new Set<string>();
-      for (const b of parsed) {
-        if (!seenIds.has(b.id)) {
-          seenIds.add(b.id);
-          uniqueBranches.push(b);
-        } else {
-          updated = true;
-        }
+      // Overlay any user-edited metadata while ensuring all 12 departments remain present
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsed.forEach(b => {
+          if (b && b.id) {
+            const canonical = branchMap.get(b.id);
+            if (canonical) {
+              const merged = { ...canonical, ...b };
+              if (merged.hodEmail && (merged.hodEmail.includes('@gmail.com') || merged.hodEmail.includes('@college.edu'))) {
+                merged.hodEmail = merged.hodEmail.replace('@gmail.com', '@sjdc.edu').replace('@college.edu', '@sjdc.edu');
+              }
+              branchMap.set(b.id, merged);
+            } else {
+              if (b.hodEmail && (b.hodEmail.includes('@gmail.com') || b.hodEmail.includes('@college.edu'))) {
+                b.hodEmail = b.hodEmail.replace('@gmail.com', '@sjdc.edu').replace('@college.edu', '@sjdc.edu');
+              }
+              branchMap.set(b.id, b);
+            }
+          }
+        });
       }
 
-      // Add Department of Mathematics if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-math' || b.name === 'Department of Mathematics' || b.code === 'MATH')) {
-        const mathBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-math');
-        if (mathBranch) {
-          uniqueBranches.push(mathBranch);
-          updated = true;
-        }
-      }
-
-      // Add Department of Statistics if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-stat' || b.name === 'Department of Statistics' || b.code === 'STAT')) {
-        const statBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-stat');
-        if (statBranch) {
-          uniqueBranches.push(statBranch);
-          updated = true;
-        }
-      }
-
-      // Add Department of Zoology if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-zoo' || b.name.includes('Zoology') || b.code === 'ZOO')) {
-        const zooBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-zoo');
-        if (zooBranch) {
-          uniqueBranches.push(zooBranch);
-          updated = true;
-        }
-      }
-
-      // Add Department of Telugu if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-tel' || b.name.includes('Telugu') || b.code === 'TEL')) {
-        const telBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-tel');
-        if (telBranch) {
-          uniqueBranches.push(telBranch);
-          updated = true;
-        }
-      }
-
-      // Add Department of Arabic if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-arb' || b.name.includes('Arabic') || b.code === 'ARB')) {
-        const arbBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-arb');
-        if (arbBranch) {
-          uniqueBranches.push(arbBranch);
-          updated = true;
-        }
-      }
-
-      // Add Department of Hindi if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-hin' || b.name.includes('Hindi') || b.code === 'HIN')) {
-        const hinBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-hin');
-        if (hinBranch) {
-          uniqueBranches.push(hinBranch);
-          updated = true;
-        }
-      }
-
-      // Add Department of Commerce if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-com' || b.name.includes('Commerce') || b.code === 'COM')) {
-        const comBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-com');
-        if (comBranch) {
-          uniqueBranches.push(comBranch);
-          updated = true;
-        }
-      }
-
-      // Add Department of Chemistry if missing
-      if (!uniqueBranches.some(b => b.id === 'branch-chem' || b.name.includes('Chemistry') || b.code === 'CHEM')) {
-        const chemBranch = INITIAL_BRANCHES.find(b => b.id === 'branch-chem');
-        if (chemBranch) {
-          uniqueBranches.push(chemBranch);
-          updated = true;
-        }
-      }
-
-      if (updated || !localStorage.getItem(STORAGE_KEYS.BRANCHES)) {
-        localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(uniqueBranches));
-        localStorage.setItem('acadpulse_branches_v2', JSON.stringify(uniqueBranches));
-      }
-      return uniqueBranches;
+      const allBranches = Array.from(branchMap.values());
+      localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(allBranches));
+      return allBranches;
     } catch {
       return INITIAL_BRANCHES;
     }
   },
   setBranches: (branches: Branch[]): void => {
-    localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branches));
-    localStorage.setItem('acadpulse_branches_v2', JSON.stringify(branches));
+    // Preserve all canonical institutional departments
+    const branchMap = new Map<string, Branch>();
+    INITIAL_BRANCHES.forEach(b => branchMap.set(b.id, { ...b }));
+    if (Array.isArray(branches)) {
+      branches.forEach(b => {
+        if (b && b.id) {
+          const canonical = branchMap.get(b.id);
+          if (canonical) {
+            branchMap.set(b.id, { ...canonical, ...b });
+          } else {
+            branchMap.set(b.id, b);
+          }
+        }
+      });
+    }
+    const cleanBranches = Array.from(branchMap.values());
+    localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(cleanBranches));
   },
 
   // Current User
@@ -298,7 +112,7 @@ export const storageService = {
       // English HOD initial migration from legacy mock names
       if ((parsed.name && (parsed.name.includes('Raisa') || parsed.name.includes('Rajesh') || parsed.name.includes('Sharma'))) && parsed.branchId === 'branch-cse') {
         parsed.name = 'Dr. P.Shahnaz';
-        parsed.email = 'p.shahnaz@gmail.com';
+        parsed.email = 'p.shahnaz@sjdc.edu';
         parsed.branchName = 'English';
         updated = true;
       }
@@ -311,7 +125,7 @@ export const storageService = {
       if (parsed.id === 'user-hod-aids' || parsed.id === 'user-hod-cs' || (parsed.name && parsed.name.includes('Sundaram')) || (parsed.branchName && parsed.branchName.includes('Artificial Intelligence'))) {
         parsed.id = 'user-hod-cs';
         parsed.name = 'S. Latha Rani';
-        parsed.email = 's.latharani@gmail.com';
+        parsed.email = 's.latharani@sjdc.edu';
         parsed.branchId = 'branch-cs';
         parsed.branchName = 'Department of Computer Science';
         updated = true;
@@ -321,7 +135,7 @@ export const storageService = {
       if (parsed.id === 'user-hod-ece' || parsed.id === 'user-hod-ep' || (parsed.name && parsed.name.includes('Ramanathan')) || (parsed.branchName && parsed.branchName.includes('Electronics & Communication'))) {
         parsed.id = 'user-hod-ep';
         parsed.name = 'Dr. K.S.R Chandra Sekhar';
-        parsed.email = 'ksr.chandrasekhar@gmail.com';
+        parsed.email = 'ksr.chandrasekhar@sjdc.edu';
         parsed.branchId = 'branch-ep';
         parsed.branchName = 'Physics & Electronics';
         updated = true;
@@ -331,7 +145,7 @@ export const storageService = {
       if (parsed.id === 'user-hod-it' || parsed.id === 'user-hod-mb' || (parsed.name && parsed.name.includes('Mahapatra')) || (parsed.branchName && parsed.branchName.includes('Information Technology'))) {
         parsed.id = 'user-hod-mb';
         parsed.name = 'H.N Prasanna';
-        parsed.email = 'hn.prasanna@gmail.com';
+        parsed.email = 'hn.prasanna@sjdc.edu';
         parsed.branchId = 'branch-mb';
         parsed.branchName = 'Microbiology & Biotechnology';
         updated = true;
@@ -340,7 +154,7 @@ export const storageService = {
       // Mathematics HOD
       if (parsed.id === 'user-hod-math' || (parsed.name && parsed.name.includes('Anuradha'))) {
         parsed.name = 'Dr. T. Mohan Reddy';
-        parsed.email = 't.mohanreddy@gmail.com';
+        parsed.email = 't.mohanreddy@sjdc.edu';
         parsed.branchName = 'Department of Mathematics';
         updated = true;
       }
@@ -348,7 +162,7 @@ export const storageService = {
       // Statistics HOD
       if (parsed.id === 'user-hod-stat' || (parsed.name && parsed.name.includes('Sengupta'))) {
         parsed.name = 'I. Kalyani';
-        parsed.email = 'i.kalyani@gmail.com';
+        parsed.email = 'i.kalyani@sjdc.edu';
         parsed.branchName = 'Department of Statistics';
         updated = true;
       }
@@ -356,7 +170,7 @@ export const storageService = {
       // Zoology HOD
       if (parsed.id === 'user-hod-zoo' || (parsed.name && parsed.name.includes('Ramesh Chandra'))) {
         parsed.name = 'Dr. C.S. Sreenivas Rao';
-        parsed.email = 'cs.sreenivasrao@gmail.com';
+        parsed.email = 'cs.sreenivasrao@sjdc.edu';
         parsed.branchName = 'Department of Zoology';
         updated = true;
       }
@@ -364,7 +178,7 @@ export const storageService = {
       // Telugu HOD
       if (parsed.id === 'user-hod-tel' || (parsed.name && parsed.name.includes('Srinivas Rao') && !parsed.name.includes('C.S.'))) {
         parsed.name = 'N.Y. Swamy';
-        parsed.email = 'ny.swamy@gmail.com';
+        parsed.email = 'ny.swamy@sjdc.edu';
         parsed.branchName = 'Department of Telugu';
         updated = true;
       }
@@ -372,7 +186,7 @@ export const storageService = {
       // Arabic HOD
       if (parsed.id === 'user-hod-arb' || (parsed.name && parsed.name.includes('Mansoor'))) {
         parsed.name = 'TS MD Moin';
-        parsed.email = 'ts.mdmoin@gmail.com';
+        parsed.email = 'ts.mdmoin@sjdc.edu';
         parsed.branchName = 'Department of Arabic';
         updated = true;
       }
@@ -380,7 +194,7 @@ export const storageService = {
       // Hindi HOD
       if (parsed.id === 'user-hod-hin' || (parsed.name && parsed.name.includes('Meenakshi'))) {
         parsed.name = 'SK Mastan Vali';
-        parsed.email = 'sk.mastanvali@gmail.com';
+        parsed.email = 'sk.mastanvali@sjdc.edu';
         parsed.branchName = 'Department of Hindi';
         updated = true;
       }
@@ -388,7 +202,7 @@ export const storageService = {
       // Commerce HOD
       if (parsed.id === 'user-hod-com') {
         parsed.name = 'M. Arjun';
-        parsed.email = 'm.arjun@gmail.com';
+        parsed.email = 'm.arjun@sjdc.edu';
         parsed.branchName = 'Department of Commerce';
         updated = true;
       }
@@ -396,12 +210,12 @@ export const storageService = {
       // Chemistry HOD
       if (parsed.id === 'user-hod-chem') {
         parsed.name = 'K. Vasavi';
-        parsed.email = 'k.vasavi@gmail.com';
+        parsed.email = 'k.vasavi@sjdc.edu';
         parsed.branchName = 'Department of Chemistry';
         updated = true;
       }
-      if (parsed.email && parsed.email.includes('@college.edu')) {
-        parsed.email = parsed.email.replace('@college.edu', '@gmail.com');
+      if (parsed.email && (parsed.email.includes('@college.edu') || parsed.email.includes('@gmail.com'))) {
+        parsed.email = parsed.email.replace('@college.edu', '@sjdc.edu').replace('@gmail.com', '@sjdc.edu');
         updated = true;
       }
       if (!parsed.qualification) {
@@ -421,11 +235,12 @@ export const storageService = {
         delete parsed.phone;
         updated = true;
       }
-      if (parsed.avatar) {
-        parsed.avatar = '';
-        updated = true;
+      if (parsed.id === 'user-dean' || parsed.name === 'Dr. Alistair Vance') {
+        const principal = INITIAL_USERS.find(u => u.id === 'user-principal') || INITIAL_USERS[0];
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(principal));
+        return principal;
       }
-      if (parsed.role === 'student' || parsed.id === 'user-5') {
+      if (parsed.role === 'student' || parsed.role === 'faculty' || parsed.id === 'user-5' || !INITIAL_USERS.some(u => u.id === parsed.id)) {
         localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
         return INITIAL_USERS[0];
       }
@@ -588,48 +403,22 @@ export const storageService = {
   // Events
   getEvents: (): DepartmentEvent[] => {
     try {
+      // Purge any obsolete cached demo data keys
+      localStorage.removeItem('acadpulse_events_v2');
+      localStorage.removeItem('acadpulse_events');
       const data = localStorage.getItem(STORAGE_KEYS.EVENTS);
-      if (!data) return INITIAL_EVENTS;
+      if (!data) return [];
       const parsed: DepartmentEvent[] = JSON.parse(data);
-      let updated = false;
-
-      const coordinatorMap: Record<string, string> = {
-        'Raisa Tahseen': 'Dr. P.Shahnaz',
-        'Dr. Ramesh Chandra': 'Dr. C.S. Sreenivas Rao',
-        'Dr. K. Srinivas Rao': 'N.Y. Swamy',
-        'Dr. Tariq Al-Mansoor': 'TS MD Moin',
-        'Dr. Meenakshi Pandey': 'SK Mastan Vali'
-      };
-
-      parsed.forEach(e => {
-        if (coordinatorMap[e.facultyCoordinator]) {
-          e.facultyCoordinator = coordinatorMap[e.facultyCoordinator];
-          updated = true;
-        }
-        if (e.studentCoordinator === undefined) {
-          const matchInitial = INITIAL_EVENTS.find(init => init.id === e.id);
-          e.studentCoordinator = matchInitial?.studentCoordinator || '';
-          updated = true;
-        }
-      });
-
-      const newBranchIds = ['branch-zoo', 'branch-tel', 'branch-arb', 'branch-hin', 'branch-com', 'branch-chem'];
-      const missingBranchEvents = INITIAL_EVENTS.filter(e => newBranchIds.includes(e.branchId) && !parsed.some(existing => existing.id === e.id));
-      if (missingBranchEvents.length > 0) {
-        const merged = [...parsed, ...missingBranchEvents];
-        localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(merged));
-        return merged;
-      }
-      if (updated) {
-        localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(parsed));
-      }
-      return parsed;
+      if (!Array.isArray(parsed)) return [];
+      // Strictly exclude any leftover mock/demo events
+      return parsed.filter(e => !isDemoEvent(e));
     } catch {
-      return INITIAL_EVENTS;
+      return [];
     }
   },
   setEvents: (events: DepartmentEvent[]): void => {
-    localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events));
+    const clean = (events || []).filter(e => !isDemoEvent(e));
+    localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(clean));
   },
 
   // Bookings

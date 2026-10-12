@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
-import { 
-  Building2, 
-  Sun, 
-  Moon, 
-  Bell, 
-  ChevronDown, 
-  User as UserIcon, 
-  ShieldCheck, 
-  GraduationCap, 
-  Sparkles,
-  Layers,
-  Menu
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Sun,
+  Moon,
+  Bell,
+  ChevronDown,
+  User as UserIcon,
+  Menu,
+  Lock
 } from 'lucide-react';
+import { Logo } from './Logo';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../context/AuthContext';
 import { UserProfileModal } from '../settings/UserProfileModal';
+import { HODReauthModal } from '../auth/HODReauthModal';
+import { Branch, User } from '../../types';
+import { authService } from '../../services/authService';
+import './Navbar.css';
 
 interface NavbarProps {
   onOpenNotifications: () => void;
@@ -22,107 +23,141 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMobileSidebar }) => {
-  const { 
-    theme, 
-    toggleTheme, 
-    branches, 
-    selectedBranchId, 
-    setSelectedBranchId, 
+  const {
+    theme,
+    toggleTheme,
+    branches,
+    selectedBranchId,
+    setSelectedBranchId,
     selectedBranch,
-    unreadNotificationCount 
+    unreadNotificationCount,
+    addToast
   } = useDepartment();
 
-  const { currentUser } = useAuth();
+  const { currentUser, allUsers, switchUserById } = useAuth();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
+  const [reauthTarget, setReauthTarget] = useState<User | null>(null);
+  const [reauthBranch, setReauthBranch] = useState<Branch | null>(null);
+  const [isReauthOpen, setIsReauthOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const getRoleBadge = () => {
-    if (currentUser.role === 'admin') {
-      return <span className="badge badge-rose"><ShieldCheck size={12} /> HOD / Admin</span>;
+  const handleSelectBranch = (branch: Branch) => {
+    setIsBranchDropdownOpen(false);
+    if (branch.id === selectedBranchId) {
+      return;
     }
-    if (currentUser.role === 'faculty') {
-      return <span className="badge badge-indigo"><GraduationCap size={12} /> Faculty</span>;
+
+    // Look up target HOD for this department
+    const targetHOD = allUsers.find(
+      u =>
+        (u.branchId === branch.id && (u.role === 'admin' || u.isSuperAdmin)) ||
+        (branch.hodEmail && u.email?.toLowerCase() === branch.hodEmail.toLowerCase()) ||
+        (branch.hodName && u.name.toLowerCase() === branch.hodName.toLowerCase())
+    );
+
+    // If target HOD exists and does not match current active user, require secure re-authentication
+    if (targetHOD && targetHOD.id !== currentUser.id) {
+      setReauthTarget(targetHOD);
+      setReauthBranch(branch);
+      setIsReauthOpen(true);
+      return;
     }
-    return <span className="badge badge-emerald"><UserIcon size={12} /> Student CR</span>;
+
+    // Direct switch if already the same HOD account
+    setSelectedBranchId(branch.id);
   };
+
+  const handleReauthSuccess = (authenticatedUser: User) => {
+    switchUserById(authenticatedUser.id);
+    authService.saveSession(authenticatedUser);
+    if (reauthBranch) {
+      setSelectedBranchId(reauthBranch.id);
+      addToast(`Access granted! Switched to ${reauthBranch.name} workspace (${authenticatedUser.name})`, 'success');
+    }
+    setIsReauthOpen(false);
+    setReauthTarget(null);
+    setReauthBranch(null);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsBranchDropdownOpen(false);
+      }
+    };
+    if (isBranchDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isBranchDropdownOpen]);
 
   return (
     <>
-      <header className="navbar no-print" style={{
-        height: '70px',
-        padding: '0 2rem',
-        background: '#ADD8E6',
-        color: '#001f3f',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(0, 31, 63, 0.15)',
-        boxShadow: '0 2px 10px rgba(0, 31, 63, 0.06)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
-      }}>
-        {/* Left: Mobile Menu Trigger & Branch Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+      <header className="navbar no-print">
+        {/* Far Left: Menu Toggle & 'ADT' Branding */}
+        <div className="navbar-left">
           {onToggleMobileSidebar && (
             <button
               onClick={onToggleMobileSidebar}
               className="mobile-menu-btn no-print"
-              aria-label="Open Navigation Menu"
+              aria-label="Toggle Navigation Menu"
               title="Menu"
             >
               <Menu size={20} color="#001f3f" />
             </button>
           )}
 
-          {/* Application Title in Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginRight: '0.25rem' }}>
-            <span style={{ fontWeight: 800, fontSize: '1.15rem', color: '#001f3f', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-              ADT
-            </span>
-            <span className="navbar-brand-subtitle" style={{ fontSize: '0.85rem', color: '#001f3f', opacity: 0.85, fontWeight: 600, whiteSpace: 'nowrap' }}>
-              | Academic Departmental Track
-            </span>
+          <div className="navbar-brand">
+            <div className="navbar-logo-wrap">
+              <Logo size={36} variant="badge" />
+            </div>
+            <div className="navbar-brand-text">
+              <span className="navbar-brand-title">
+                ADT
+              </span>
+              <span className="navbar-brand-subtitle hide-mobile">
+                Academic Departmental Track
+              </span>
+            </div>
           </div>
+        </div>
 
-          <div style={{ position: 'relative' }}>
+        {/* Far Right: Department Selector, Theme Toggle, Notification Bell, Profile Dropdown */}
+        <div className="navbar-right">
+          {/* Language / Department Selector */}
+          <div ref={dropdownRef} className="navbar-dropdown-wrapper">
             <button
               onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
-              className="btn btn-secondary navbar-branch-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.5rem 1rem',
-                borderRadius: 'var(--radius-md)'
-              }}
+              className="navbar-branch-btn"
+              title="Select Department / Language"
+              aria-label="Department and Language Selector"
             >
-              <div 
-                style={{ 
-                  width: '10px', 
-                  height: '10px', 
-                  borderRadius: '50%', 
-                  background: selectedBranch.color || '#001f3f' 
-                }} 
+              <span
+                className="navbar-branch-dot"
+                style={{
+                  background: selectedBranch.color || '#6366f1'
+                }}
               />
-              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#001f3f' }}>
+              <span className="navbar-branch-code">
                 {selectedBranch.code}
               </span>
-              <span className="navbar-branch-text" style={{ color: '#001f3f', opacity: 0.8, fontSize: '0.85rem' }}>
-                | {selectedBranch.name}
-              </span>
-              <ChevronDown size={16} color="#001f3f" />
+              <ChevronDown
+                className={`navbar-chevron ${isBranchDropdownOpen ? 'open' : ''}`}
+                color="#001f3f"
+              />
             </button>
 
             {/* Dropdown Menu */}
             {isBranchDropdownOpen && (
-              <div 
+              <div
                 className="glass-panel"
                 style={{
                   position: 'absolute',
-                  top: '120%',
-                  left: 0,
+                  top: 'calc(100% + 8px)',
+                  right: 0,
                   width: '320px',
                   maxWidth: 'calc(100vw - 2rem)',
                   padding: '0.5rem',
@@ -131,15 +166,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
                 }}
               >
                 <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Switch Department / Branch
+                  Switch Department / Language
                 </div>
                 {branches.map(branch => (
                   <button
                     key={branch.id}
-                    onClick={() => {
-                      setSelectedBranchId(branch.id);
-                      setIsBranchDropdownOpen(false);
-                    }}
+                    onClick={() => handleSelectBranch(branch)}
+                    title={branch.id === selectedBranchId ? 'Currently active department' : `Switch to ${branch.name} (HOD Re-authentication required)`}
                     style={{
                       width: '100%',
                       textAlign: 'left',
@@ -162,96 +195,62 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
                       <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{branch.name}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>HOD: {branch.hodName}</div>
                     </div>
-                    <span className="badge badge-indigo" style={{ fontSize: '0.7rem' }}>{branch.code}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      {branch.id !== selectedBranchId && (
+                        <span title="Password required to switch" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          <Lock size={12} color="#f43f5e" />
+                        </span>
+                      )}
+                      <span className="badge badge-indigo" style={{ fontSize: '0.7rem' }}>{branch.code}</span>
+                    </div>
                   </button>
                 ))}
               </div>
             )}
           </div>
-        </div>
 
-        {/* Right: Theme Toggle, Notifications, User Profile */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="btn btn-secondary btn-icon navbar-icon-btn"
+            className="navbar-icon-btn navbar-theme-btn"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle Theme"
           >
-            {theme === 'dark' ? <Sun size={18} color="#b45309" /> : <Moon size={18} color="#001f3f" />}
+            {theme === 'dark' ? <Sun color="#b45309" /> : <Moon color="#001f3f" />}
           </button>
 
           {/* Notifications Trigger */}
           <button
             onClick={onOpenNotifications}
-            className="btn btn-secondary btn-icon navbar-icon-btn"
-            style={{ position: 'relative' }}
+            className="navbar-icon-btn navbar-notif-btn"
             title="Notifications & Announcements"
+            aria-label="Notifications"
           >
-            <Bell size={18} color="#001f3f" />
+            <Bell color="#001f3f" />
             {unreadNotificationCount > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '-3px',
-                  right: '-3px',
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '50%',
-                  background: 'var(--accent-rose)',
-                  color: '#fff',
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid #ADD8E6'
-                }}
-              >
-                {unreadNotificationCount}
+              <span className="navbar-notif-badge">
+                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
               </span>
             )}
           </button>
 
-          {/* User Profile Pill */}
+          {/* Profile Dropdown */}
           <div
             onClick={() => setIsProfileModalOpen(true)}
             className="navbar-user-pill"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.35rem 0.65rem 0.35rem 0.45rem',
-              borderRadius: 'var(--radius-full)',
-              cursor: 'pointer'
-            }}
-            title="Click to switch role or view profile"
+            title={`User: ${currentUser.name} (HOD) • Click to view profile or switch HOD`}
+            aria-label="User Profile Dropdown"
           >
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: 'rgba(0, 31, 63, 0.12)',
-                border: '2px solid #001f3f',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#001f3f',
-                flexShrink: 0
-              }}
-            >
-              <UserIcon size={18} />
+            <div className="navbar-user-avatar">
+              {currentUser.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                />
+              ) : (
+                <UserIcon size={14} />
+              )}
             </div>
-            <div className="navbar-user-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#001f3f', whiteSpace: 'nowrap' }}>
-                  {currentUser.name}
-                </span>
-                {getRoleBadge()}
-              </div>
-            </div>
-            <ChevronDown size={14} color="#001f3f" />
           </div>
         </div>
       </header>
@@ -260,6 +259,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
       <UserProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
+      />
+
+      {/* Re-Authentication Modal for Department Workspace Switching */}
+      <HODReauthModal
+        isOpen={isReauthOpen}
+        onClose={() => {
+          setIsReauthOpen(false);
+          setReauthTarget(null);
+          setReauthBranch(null);
+        }}
+        targetUser={reauthTarget}
+        targetDepartmentName={reauthBranch?.name}
+        onAuthenticated={handleReauthSuccess}
       />
     </>
   );

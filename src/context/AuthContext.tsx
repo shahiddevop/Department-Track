@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { User, UserRole, Branch } from '../types';
 import { INITIAL_USERS } from '../services/mockData';
 import { storageService } from '../services/storageService';
+import { authService } from '../services/authService';
 
 interface AuthContextType {
   currentUser: User;
@@ -19,13 +20,51 @@ interface AuthContextType {
   canAddBranch: boolean;
   canEditBranchDetails: (branchId: string, branch?: Branch) => boolean;
   canEditBranchContent: (branchId: string) => boolean;
+  // Login system
+  isAuthenticated: boolean;
+  mustChangePassword: boolean;
+  loginUser: (user: User, mustChange: boolean) => void;
+  logout: () => void;
+  dismissPasswordChange: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUserState] = useState<User>(() => storageService.getCurrentUser());
-  const allUsers = INITIAL_USERS;
+  // Check for existing session
+  const existingSession = authService.getSession();
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!existingSession);
+  const [mustChangePassword, setMustChangePassword] = useState<boolean>(false);
+  const [currentUser, setCurrentUserState] = useState<User>(() => {
+    if (existingSession?.user) {
+      return existingSession.user;
+    }
+    return storageService.getCurrentUser();
+  });
+
+  const [registeredFacultyList, setRegisteredFacultyList] = useState<User[]>(() =>
+    authService.getApprovedFaculty()
+  );
+
+  useEffect(() => {
+    const handleFacultyUpdate = () => {
+      setRegisteredFacultyList(authService.getApprovedFaculty());
+    };
+    window.addEventListener('adt_faculty_updated', handleFacultyUpdate);
+    return () => window.removeEventListener('adt_faculty_updated', handleFacultyUpdate);
+  }, []);
+
+  const allUsers = useMemo(() => {
+    const existingIds = new Set(INITIAL_USERS.map(u => u.id));
+    const extra = registeredFacultyList.filter(f => !existingIds.has(f.id));
+    return [...INITIAL_USERS, ...extra];
+  }, [registeredFacultyList]);
+
+  // Initialize auth credentials on mount
+  useEffect(() => {
+    authService.initializeCredentials();
+  }, []);
 
   useEffect(() => {
     storageService.setCurrentUser(currentUser);
@@ -35,6 +74,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUserState(user);
   };
 
+  // Login handler
+  const loginUser = useCallback((user: User, _mustChange: boolean = false) => {
+    setCurrentUserState(user);
+    setIsAuthenticated(true);
+    setMustChangePassword(false);
+    storageService.setCurrentUser(user);
+    authService.saveSession(user);
+  }, []);
+
+  // Logout handler
+  const logout = useCallback(() => {
+    authService.clearSession();
+    setIsAuthenticated(false);
+    setMustChangePassword(false);
+    // Reset to default user
+    const defaultUser = INITIAL_USERS[0];
+    setCurrentUserState(defaultUser);
+  }, []);
+
+  // Dismiss password change prompt
+  const dismissPasswordChange = useCallback(() => {
+    setMustChangePassword(false);
+  }, []);
+
   const switchRole = (role: UserRole) => {
     const foundUser = allUsers.find(u => u.role === role);
     if (foundUser) {
@@ -43,11 +106,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const switchUserById = (userId: string) => {
-    const mappedId = 
+    const mappedId =
       userId === 'user-hod-aids' ? 'user-hod-cs' :
-      userId === 'user-hod-ece' ? 'user-hod-ep' :
-      userId === 'user-hod-it' ? 'user-hod-mb' :
-      userId;
+        userId === 'user-hod-ece' ? 'user-hod-ep' :
+          userId === 'user-hod-it' ? 'user-hod-mb' :
+            userId;
     const foundUser = allUsers.find(u => u.id === mappedId || u.id === userId);
     if (foundUser) {
       setCurrentUserState(foundUser);
@@ -107,7 +170,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSuperAdmin,
         canAddBranch,
         canEditBranchDetails,
-        canEditBranchContent
+        canEditBranchContent,
+        // Login system
+        isAuthenticated,
+        mustChangePassword,
+        loginUser,
+        logout,
+        dismissPasswordChange,
       }}
     >
       {children}

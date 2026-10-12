@@ -159,3 +159,38 @@ export function calculateEventStatus(
     return 'Completed';
   }
 }
+
+export const DEMO_EVENT_IDS = new Set([
+  'event-1', 'event-2', 'event-3', 'event-4', 'event-5', 'event-6',
+  'event-ep-1', 'event-mb-1', 'event-math-1', 'event-stat-1',
+  'event-zoo-1', 'event-tel-1', 'event-arb-1', 'event-hin-1',
+  'event-com-1', 'event-chem-1'
+]);
+
+export function isDemoEvent(event: { id?: string; title?: string }): boolean {
+  if (event.id && DEMO_EVENT_IDS.has(event.id)) return true;
+  if (event.title) {
+    const t = event.title.toLowerCase();
+    if (
+      t.includes('hacknova') ||
+      t.includes('mastering llm') ||
+      t.includes('post-quantum cryptography') ||
+      t.includes('cybersecurity & ai ethics') ||
+      t.includes('scalable microservices') ||
+      t.includes('field immersion visit') ||
+      t.includes('semiconductor devices') ||
+      t.includes('microbial fermentation') ||
+      t.includes('applied linear algebra') ||
+      t.includes('stochastic modeling') ||
+      t.includes('faunal biodiversity') ||
+      t.includes('telugu bhasha dinotsavam') ||
+      t.includes('classical calligraphy') ||
+      t.includes('rashtriya hindi pakhwada') ||
+      t.includes('national commerce conclave') ||
+      t.includes('green chemistry')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}

@@ -1,0 +1,388 @@
+/* =========================================================
+   ADT Responsive Navbar Styles
+   Light Blue Background (#ADD8E6) • Navy Accents (#001f3f)
+   Fully responsive with flexible spacing, flex-wrap: nowrap,
+   and clean scaling across mobile, tablet, and desktop.
+   ========================================================= */
+
+.navbar {
+  width: 100% !important;
+  max-width: 100vw !important;
+  box-sizing: border-box !important;
+  height: 72px !important;
+  padding: 0 1.5rem !important;
+  background: #ADD8E6 !important;
+  color: #001f3f !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 31, 63, 0.15) !important;
+  box-shadow: 0 2px 10px rgba(0, 31, 63, 0.06);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  overflow: visible !important;
+  gap: 0.5rem;
+}
+
+/* ─── Left Section ──────────────────────────────────────── */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  user-select: none;
+  min-width: 0;
+}
+
+.navbar-logo-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.navbar-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.navbar-brand-title {
+  font-weight: 800;
+  font-size: 1.18rem;
+  color: #001f3f;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.navbar-brand-subtitle {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(0, 31, 63, 0.72);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+/* ─── Right Section ─────────────────────────────────────── */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.navbar-dropdown-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ─── Common Navbar Buttons & Controls ──────────────────── */
+.navbar .mobile-menu-btn,
+.navbar .navbar-branch-btn,
+.navbar .navbar-icon-btn,
+.navbar .navbar-user-pill {
+  height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(0, 31, 63, 0.15) !important;
+  color: #001f3f !important;
+  box-shadow: 0 1px 3px rgba(0, 31, 63, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+.navbar .mobile-menu-btn:hover,
+.navbar .navbar-branch-btn:hover,
+.navbar .navbar-icon-btn:hover,
+.navbar .navbar-user-pill:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 31, 63, 0.35) !important;
+  box-shadow: 0 2px 6px rgba(0, 31, 63, 0.1);
+  transform: translateY(-1px);
+}
+
+.navbar .mobile-menu-btn:active,
+.navbar .navbar-branch-btn:active,
+.navbar .navbar-icon-btn:active,
+.navbar .navbar-user-pill:active {
+  transform: translateY(0);
+}
+
+/* Icon Buttons (Menu, Theme, Bell) */
+.navbar .mobile-menu-btn,
+.navbar .navbar-icon-btn {
+  width: 38px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+}
+
+.navbar .mobile-menu-btn svg,
+.navbar .navbar-icon-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Branch / Department Selector Button */
+.navbar .navbar-branch-btn {
+  padding: 0 0.75rem !important;
+  border-radius: 9999px !important;
+  gap: 0.4rem !important;
+}
+
+.navbar-branch-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.navbar-branch-code {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #001f3f;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.navbar-chevron {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.navbar-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Notifications Button & Badge */
+.navbar-notif-btn {
+  position: relative !important;
+}
+
+.navbar-notif-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #f43f5e;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ADD8E6;
+  line-height: 1;
+}
+
+/* User Profile Button */
+.navbar .navbar-user-pill {
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.navbar-user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 31, 63, 0.1);
+  border: 1.5px solid #001f3f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #001f3f;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.navbar-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ═════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS (Tablets & Mobile)
+   ═════════════════════════════════════════════════════════ */
+
+/* Tablets & Small Laptops (<= 960px) */
+@media (max-width: 960px) {
+  .navbar {
+    height: 64px !important;
+    padding: 0 1rem !important;
+  }
+
+  .navbar-brand-subtitle,
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .navbar-left {
+    gap: 0.5rem;
+  }
+
+  .navbar-right {
+    gap: 0.45rem;
+  }
+}
+
+/* Mobile Devices (<= 640px) */
+@media (max-width: 640px) {
+  .navbar {
+    height: 58px !important;
+    padding: 0 0.55rem !important;
+    gap: 0.35rem;
+  }
+
+  /* Compact Left Section */
+  .navbar-left {
+    gap: 0.35rem;
+  }
+
+  .navbar-brand {
+    gap: 0.35rem;
+  }
+
+  .navbar-brand-title {
+    font-size: 1.05rem;
+  }
+
+  .hide-mobile,
+  .navbar-brand-subtitle {
+    display: none !important;
+  }
+
+  /* Compact Right Section - Flexible Gap */
+  .navbar-right {
+    gap: 0.35rem;
+  }
+
+  /* Scale Buttons to fit smoothly without overflow */
+  .navbar .mobile-menu-btn,
+  .navbar .navbar-icon-btn {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+  }
+
+  .navbar .mobile-menu-btn svg,
+  .navbar .navbar-icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .navbar .navbar-branch-btn {
+    height: 34px !important;
+    padding: 0 0.5rem !important;
+    gap: 0.3rem !important;
+  }
+
+  .navbar-branch-code {
+    font-size: 0.78rem;
+  }
+
+  .navbar-branch-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .navbar-chevron {
+    width: 11px;
+    height: 11px;
+  }
+
+  .navbar .navbar-user-pill {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+  }
+
+  .navbar-user-avatar {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Ultra Small Devices (<= 375px) */
+@media (max-width: 375px) {
+  .navbar {
+    height: 54px !important;
+    padding: 0 0.35rem !important;
+    gap: 0.25rem;
+  }
+
+  .navbar-left {
+    gap: 0.25rem;
+  }
+
+  .navbar-brand {
+    gap: 0.25rem;
+  }
+
+  .navbar-brand-title {
+    font-size: 0.95rem;
+  }
+
+  .navbar-right {
+    gap: 0.25rem;
+  }
+
+  .navbar .mobile-menu-btn,
+  .navbar .navbar-icon-btn {
+    width: 31px !important;
+    height: 31px !important;
+  }
+
+  .navbar .mobile-menu-btn svg,
+  .navbar .navbar-icon-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .navbar .navbar-branch-btn {
+    height: 31px !important;
+    padding: 0 0.4rem !important;
+    gap: 0.2rem !important;
+  }
+
+  .navbar-branch-code {
+    font-size: 0.74rem;
+  }
+
+  .navbar .navbar-user-pill {
+    width: 31px !important;
+    height: 31px !important;
+    padding: 0 !important;
+  }
+}
+

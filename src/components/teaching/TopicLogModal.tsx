@@ -35,12 +35,12 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
   initialLog,
   defaultSubjectCode
 }) => {
-  const { 
-    selectedBranchId, 
-    timetable, 
+  const {
+    selectedBranchId,
+    timetable,
     subjectsProgress,
-    addTopicLog, 
-    updateTopicLog 
+    addTopicLog,
+    updateTopicLog
   } = useDepartment();
 
   const { currentUser } = useAuth();
@@ -110,14 +110,14 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
       setTopicTitle(initialLog.topicTitle || '');
       setTopicsCoveredSummary(initialLog.topicsCoveredSummary || '');
       setClassType(initialLog.classType || 'Theory');
-      const normalizedAids: DeliveryMode = 
+      const normalizedAids: DeliveryMode =
         initialLog.deliveryMode === 'Projector & Slides' ? 'Projector & PPT' :
-        (initialLog.deliveryMode || 'Chalk & Board');
+          (initialLog.deliveryMode || 'Chalk & Board');
       setDeliveryMode(normalizedAids);
       setStudentsPresent(initialLog.studentsPresent ?? initialLog.attendancePercentage ?? 54);
-      const normalizedStatus: TopicStatus = 
+      const normalizedStatus: TopicStatus =
         (initialLog.status === 'Scheduled' || initialLog.status === 'Delayed') ? 'In-Progress' :
-        (initialLog.status || 'Completed');
+          (initialLog.status || 'Completed');
       setStatus(normalizedStatus);
       setRemarks(initialLog.remarks || '');
     } else {
@@ -211,8 +211,8 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
     >
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
-          {/* Branch Name, Faculty & Present Date */}
-          <div className="form-grid-3">
+          {/* Branch Name, Section, Faculty & Present Date */}
+          <div className="form-grid-4">
             <div className="form-group">
               <label className="form-label">Branch Name *</label>
               <input
@@ -223,6 +223,19 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
                 value={subjectName}
                 onChange={e => setSubjectName(e.target.value)}
               />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Section</label>
+              <select
+                className="form-select"
+                value={section}
+                onChange={e => setSection(e.target.value)}
+              >
+                {Array.from(new Set(['A', 'B', 'C', 'D', ...(section ? [section] : [])])).sort().map(sec => (
+                  <option key={sec} value={sec}>Section {sec}</option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
@@ -249,8 +262,8 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
             </div>
           </div>
 
-          {/* Semester, Section, Unit & Day of Week */}
-          <div className="form-grid-4">
+          {/* Semester, Unit & Day of Week */}
+          <div className="form-grid-3">
             <div className="form-group">
               <label className="form-label">Semester *</label>
               <select
@@ -260,19 +273,6 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
                   <option key={s} value={s}>Semester {s}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Section</label>
-              <select
-                className="form-select"
-                value={section}
-                onChange={e => setSection(e.target.value)}
-              >
-                {['A', 'B', 'C', 'D'].map(sec => (
-                  <option key={sec} value={sec}>Section {sec}</option>
                 ))}
               </select>
             </div>

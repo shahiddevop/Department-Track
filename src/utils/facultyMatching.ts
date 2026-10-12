@@ -71,12 +71,12 @@ export const isSlotAssignedToUser = (slot: TimetableSlot, user: User): boolean =
  * - Dr. P.Shahnaz (HOD/Admin): STRICTLY account-specific
  * - Faculty members (Dr. Vikram Verma, Prof. Ananya Roy, etc.): STRICTLY account-specific
  * - Other teaching HODs: STRICTLY account-specific
- * - Dean / Super Admin (Dr. Alistair Vance): Can view all timetables or filter by faculty
+ * - Principal / Vice Principal / Super Admin (Dr. K. Shantha, Dr. C.V Satyanarayana): Can view all timetables or filter by faculty
  * - Student CR: Views class timetable for their batch/section
  */
 export const isAccountSpecificUser = (user: User): boolean => {
   if (!user) return false;
-  // Super Admin (College Dean) is exempted to oversee all departmental schedules
+  // Super Admin (College Principal & Vice Principal) is exempted to oversee all departmental schedules
   if (user.isSuperAdmin) return false;
   // Students view student batch schedules
   if (user.role === 'student') return false;
@@ -88,6 +88,47 @@ export const isAccountSpecificUser = (user: User): boolean => {
   if (user.role === 'faculty') return true;
   // Department HODs
   if (user.role === 'admin') return true;
+
+  return false;
+};
+
+/**
+ * Determines whether a DailyTopicLog entry belongs to a specific user.
+ * Uses the same normalized name-matching strategy as isSlotAssignedToUser,
+ * adapted for topic logs which only carry a facultyName (no facultyId).
+ */
+export const isLogAssignedToUser = (log: { facultyName: string }, user: User): boolean => {
+  if (!log || !user) return false;
+
+  const logFaculty = (log.facultyName || '').trim();
+  const userName = (user.name || '').trim();
+
+  // 1. Exact case-insensitive match
+  if (logFaculty && userName && logFaculty.toLowerCase() === userName.toLowerCase()) {
+    return true;
+  }
+
+  // 2. Normalized title-stripped comparison
+  const normLog = normalizeFacultyName(logFaculty);
+  const normUser = normalizeFacultyName(userName);
+
+  if (normLog && normUser) {
+    if (normLog === normUser) return true;
+    // Substring inclusion for sufficiently distinct names
+    if (normLog.length >= 4 && normUser.length >= 4) {
+      if (normLog.includes(normUser) || normUser.includes(normLog)) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Email prefix match (e.g. ananya.roy from ananya.roy@sjdc.edu)
+  if (user.email && normLog) {
+    const emailPrefix = user.email.split('@')[0].toLowerCase().replace(/[._-]/g, ' ').trim();
+    if (emailPrefix && (normLog === emailPrefix || normLog.includes(emailPrefix) || emailPrefix.includes(normLog))) {
+      return true;
+    }
+  }
 
   return false;
 };

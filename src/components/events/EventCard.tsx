@@ -6,13 +6,12 @@ import {
   MapPin,
   User,
   Users,
-  DollarSign,
-  Sparkles,
   Edit3,
   Trash2,
-  Tag
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useDepartment } from '../../context/DepartmentContext';
 import { calculateEventStatus } from '../../utils/eventStatus';
 
 interface EventCardProps {
@@ -22,8 +21,11 @@ interface EventCardProps {
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete }) => {
-  const { canCreateEvents } = useAuth();
+  const { isEventCreator } = useDepartment();
   const effectiveStatus = calculateEventStatus(event);
+
+  // Creator authorization check: conditionally render edit and delete only for creator
+  const isCreator = isEventCreator(event);
 
   const getStatusBadge = (status: EventStatus) => {
     switch (status) {
@@ -178,25 +180,65 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete })
         </div>
       </div>
 
-      {/* Footer: Actions */}
-      <div>
+      {/* Footer: Creator Attribution & Guarded Action Buttons */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          borderTop: '1px solid var(--border-subtle)',
+          paddingTop: '0.85rem',
+          marginTop: '0.5rem',
+          gap: '0.5rem',
+          flexWrap: 'wrap'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {isCreator ? (
+            <span 
+              className="badge badge-emerald" 
+              style={{ 
+                fontSize: '0.72rem', 
+                padding: '0.2rem 0.5rem', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '0.3rem',
+                fontWeight: 600
+              }}
+              title="You created this event and have management permissions"
+            >
+              <CheckCircle2 size={12} /> Created by You
+            </span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} title={`Created by: ${event.creatorName || event.facultyCoordinator}`}>
+              <User size={12} style={{ opacity: 0.7 }} />
+              <span>Created by: {event.creatorName || event.facultyCoordinator}</span>
+            </span>
+          )}
+        </div>
 
-        {/* Action Buttons */}
-        {canCreateEvents && (
-          <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.35rem' }}>
+        {/* Action Buttons: Conditionally rendered ONLY for the event creator */}
+        {isCreator && (
+          <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <button
               onClick={() => onEdit(event)}
               className="btn btn-secondary btn-sm"
-              title="Edit Event"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.65rem', fontSize: '0.775rem' }}
+              title="Edit Event (Creator Only)"
             >
-              <Edit3 size={14} />
+              <Edit3 size={13} /> Edit
             </button>
             <button
-              onClick={() => onDelete(event.id)}
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
+                  onDelete(event.id);
+                }
+              }}
               className="btn btn-danger btn-sm"
-              title="Delete Event"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.65rem', fontSize: '0.775rem' }}
+              title="Delete Event (Creator Only)"
             >
-              <Trash2 size={14} />
+              <Trash2 size={13} /> Delete
             </button>
           </div>
         )}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { DepartmentProvider, useDepartment } from './context/DepartmentContext';
+import { LoginPage } from './components/auth/LoginPage';
 import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
 import { Toast } from './components/common/Toast';
@@ -80,7 +81,7 @@ const MainAppContent: React.FC = () => {
         />
 
         {/* Active Tab View */}
-        <main style={{ flex: 1 }}>
+        <main style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%' }}>
           {renderActiveView()}
         </main>
       </div>
@@ -97,12 +98,34 @@ const MainAppContent: React.FC = () => {
   );
 };
 
+/**
+ * AuthGate component sits inside AuthProvider and conditionally
+ * renders either the LoginPage or the main app content.
+ */
+const AuthGate: React.FC = () => {
+  const { isAuthenticated, loginUser } = useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <LoginPage
+        onLoginSuccess={(user) => {
+          loginUser(user, false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <DepartmentProvider>
+      <MainAppContent />
+    </DepartmentProvider>
+  );
+};
+
 export function App() {
   return (
     <AuthProvider>
-      <DepartmentProvider>
-        <MainAppContent />
-      </DepartmentProvider>
+      <AuthGate />
     </AuthProvider>
   );
 }

@@ -16,10 +16,11 @@ export const exportService = {
 
   // Export Timetable to CSV
   exportTimetableToCSV: (slots: TimetableSlot[], branchName: string, semester?: number | string) => {
-    const headers = ['Day', 'Time Slot', 'Subject Code', 'Subject Name', 'Faculty', 'Room', 'Class Type', 'Credits'];
+    const headers = ['Day', 'Time Slot', 'Section', 'Subject Code', 'Subject Name', 'Faculty', 'Room', 'Class Type', 'Credits'];
     const rows = slots.map(slot => [
       `"${slot.day}"`,
       `"${slot.startTime} - ${slot.endTime}"`,
+      `"${slot.section || 'A'}"`,
       `"${slot.subjectCode}"`,
       `"${slot.subjectName.replace(/"/g, '""')}"`,
       `"${slot.facultyName}"`,
@@ -101,6 +102,7 @@ export const exportService = {
       'Venue',
       'Faculty Coordinator',
       'Student Lead',
+      'Created By',
       'Status',
       'Registered Count',
       'Max Capacity',
@@ -116,6 +118,7 @@ export const exportService = {
       `"${ev.venue.replace(/"/g, '""')}"`,
       `"${ev.facultyCoordinator}"`,
       `"${ev.studentCoordinator}"`,
+      `"${ev.creatorName || ev.facultyCoordinator}"`,
       `"${ev.status}"`,
       ev.registeredCount,
       ev.maxSeats,

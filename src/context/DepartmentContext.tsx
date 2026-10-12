@@ -1,19 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { 
-  Branch, 
-  Room, 
-  TimetableSlot, 
-  DailyTopicLog, 
-  DepartmentEvent, 
-  RoomBooking, 
-  Notification, 
+import {
+  Branch,
+  Room,
+  TimetableSlot,
+  DailyTopicLog,
+  DepartmentEvent,
+  RoomBooking,
+  Notification,
   TabType,
   SubjectProgress
 } from '../types';
 import { storageService } from '../services/storageService';
 import { firestoreService } from '../services/firestoreService';
-import { calculateEventStatus } from '../utils/eventStatus';
+import { calculateEventStatus, isDemoEvent } from '../utils/eventStatus';
 import { syncAllRoomStatuses, isBookingActiveNow, formatTime12h } from '../utils/roomStatus';
+import { useAuth } from './AuthContext';
+import { INITIAL_BRANCHES } from '../services/mockData';
 
 export interface ToastMessage {
   id: string;
@@ -61,8 +63,9 @@ interface DepartmentContextType {
   // Events
   events: DepartmentEvent[];
   addEvent: (event: Omit<DepartmentEvent, 'id' | 'registeredCount'>) => void;
-  updateEvent: (id: string, event: Partial<DepartmentEvent>) => void;
-  deleteEvent: (id: string) => void;
+  updateEvent: (id: string, event: Partial<DepartmentEvent>) => boolean;
+  deleteEvent: (id: string) => boolean;
+  isEventCreator: (event: DepartmentEvent) => boolean;
   registerEventRSVP: (eventId: string) => boolean;
 
   // Rooms & Bookings
@@ -95,6 +98,8 @@ interface DepartmentContextType {
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
 
 export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useAuth();
+
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>(() => storageService.getTheme());
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -113,7 +118,9 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [topicLogs, setTopicLogs] = useState<DailyTopicLog[]>(() => storageService.getTopicLogs());
   const [events, setEvents] = useState<DepartmentEvent[]>(() => {
     const stored = storageService.getEvents();
-    return stored.map(e => ({ ...e, status: calculateEventStatus(e) }));
+    return stored
+      .filter(e => !isDemoEvent(e))
+      .map(e => ({ ...e, status: calculateEventStatus(e) }));
   });
   const [notifications, setNotifications] = useState<Notification[]>(() => storageService.getNotifications());
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -202,7 +209,11 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // 2. Subscribe to real-time Cloud Firestore updates
     const unsubEvents = firestoreService.subscribeEvents(cloudEvents => {
-      setEvents(cloudEvents.map(e => ({ ...e, status: calculateEventStatus(e) })));
+      const cleanEvents = (cloudEvents || []).filter(e => !isDemoEvent(e));
+      setEvents(cleanEvents.map(e => ({
+        ...e,
+        status: calculateEventStatus(e)
+      })));
     });
 
     const unsubTimetable = firestoreService.subscribeTimetable(cloudSlots => {
@@ -214,7 +225,17 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
 
     const unsubBranches = firestoreService.subscribeBranches(cloudBranches => {
-      setBranches(cloudBranches);
+      const branchMap = new Map<string, Branch>();
+      INITIAL_BRANCHES.forEach(b => branchMap.set(b.id, { ...b }));
+      (cloudBranches || []).forEach(b => {
+        const canonical = branchMap.get(b.id);
+        if (canonical) {
+          branchMap.set(b.id, { ...canonical, ...b });
+        } else {
+          branchMap.set(b.id, b);
+        }
+      });
+      setBranches(Array.from(branchMap.values()));
     });
 
     const unsubRooms = firestoreService.subscribeRooms(cloudRooms => {
@@ -258,11 +279,11 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const setSelectedBranchId = (id: string) => {
-    const validId = 
+    const validId =
       id === 'branch-aids' ? 'branch-cs' :
-      id === 'branch-ece' ? 'branch-ep' :
-      id === 'branch-it' ? 'branch-mb' :
-      id;
+        id === 'branch-ece' ? 'branch-ep' :
+          id === 'branch-it' ? 'branch-mb' :
+            id;
     setSelectedBranchIdState(validId);
     const branch = branches.find(b => b.id === validId);
     if (branch) {
@@ -426,7 +447,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   });
 
   const updateSubject = (
-    oldCode: string, 
+    oldCode: string,
     updated: { subjectCode: string; subjectName: string; facultyName: string; semester: number; totalUnits?: number; totalPlannedHours?: number }
   ) => {
     // 1. Update timetable slots
@@ -562,35 +583,82 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   }, [timetable, topicLogs, selectedBranchId, subjectOverrides]);
 
-  // Events CRUD
+  // Events Creator Authorization Helper
+  const isEventCreator = (event: DepartmentEvent): boolean => {
+    if (!currentUser) return false;
+    if (event.createdBy) {
+      return event.createdBy === currentUser.id;
+    }
+    // Fallback for legacy events without explicit createdBy
+    if (event.facultyCoordinator && currentUser.name) {
+      return event.facultyCoordinator.trim().toLowerCase() === currentUser.name.trim().toLowerCase();
+    }
+    return false;
+  };
+
+  // Events CRUD (Creator-based authorization strictly enforced)
   const addEvent = (eventData: Omit<DepartmentEvent, 'id' | 'registeredCount'>) => {
     const id = 'event-' + Math.random().toString(36).substr(2, 9);
     const autoStatus = calculateEventStatus(eventData);
-    const newEvent: DepartmentEvent = { ...eventData, id, status: autoStatus, registeredCount: 0 };
+    const newEvent: DepartmentEvent = {
+      ...eventData,
+      id,
+      status: autoStatus,
+      registeredCount: 0,
+      createdBy: eventData.createdBy || currentUser?.id,
+      creatorName: eventData.creatorName || currentUser?.name
+    };
     setEvents(prev => [newEvent, ...prev]);
-    firestoreService.saveEvent(newEvent);
+    firestoreService.saveEvent(newEvent, currentUser?.id);
     addToast(`New event "${newEvent.title}" published!`, 'success');
   };
 
-  const updateEvent = (id: string, updated: Partial<DepartmentEvent>) => {
+  const updateEvent = (id: string, updated: Partial<DepartmentEvent>): boolean => {
+    const existing = events.find(e => e.id === id);
+    if (!existing) return false;
+
+    // Strict creator verification
+    if (!isEventCreator(existing)) {
+      addToast(`Access Denied: Only the creator of "${existing.title}" can edit it.`, 'error');
+      console.warn(`[Auth Check] User "${currentUser?.name}" (${currentUser?.id}) attempted to edit event "${existing.title}" created by ${existing.createdBy || existing.facultyCoordinator}`);
+      return false;
+    }
+
     let toSave: DepartmentEvent | null = null;
     setEvents(prev => prev.map(e => {
       if (e.id !== id) return e;
-      const merged = { ...e, ...updated };
+      const merged: DepartmentEvent = {
+        ...e,
+        ...updated,
+        createdBy: e.createdBy || currentUser?.id,
+        creatorName: e.creatorName || currentUser?.name
+      };
       const autoStatus = calculateEventStatus(merged);
       toSave = { ...merged, status: autoStatus };
       return toSave;
     }));
     if (toSave) {
-      firestoreService.saveEvent(toSave);
+      firestoreService.saveEvent(toSave, currentUser?.id);
     }
     addToast('Event updated successfully', 'success');
+    return true;
   };
 
-  const deleteEvent = (id: string) => {
+  const deleteEvent = (id: string): boolean => {
+    const existing = events.find(e => e.id === id);
+    if (!existing) return false;
+
+    // Strict creator verification
+    if (!isEventCreator(existing)) {
+      addToast(`Access Denied: Only the creator of "${existing.title}" can delete it.`, 'error');
+      console.warn(`[Auth Check] User "${currentUser?.name}" (${currentUser?.id}) attempted to delete event "${existing.title}" created by ${existing.createdBy || existing.facultyCoordinator}`);
+      return false;
+    }
+
     setEvents(prev => prev.filter(e => e.id !== id));
-    firestoreService.deleteEvent(id);
+    firestoreService.deleteEvent(id, currentUser?.id, existing.createdBy);
     addToast('Event deleted', 'info');
+    return true;
   };
 
   const registerEventRSVP = (eventId: string): boolean => {
@@ -633,9 +701,9 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateRoomStatus = (
-    roomId: string, 
-    status: Room['currentStatus'], 
-    occupant?: string, 
+    roomId: string,
+    status: Room['currentStatus'],
+    occupant?: string,
     subject?: string,
     slotTime?: string
   ) => {
@@ -787,6 +855,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addEvent,
         updateEvent,
         deleteEvent,
+        isEventCreator,
         registerEventRSVP,
         rooms,
         bookings,

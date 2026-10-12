@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Plus, 
@@ -6,12 +6,16 @@ import {
   Edit3,
   CheckCircle2,
   Lock,
-  Database
+  Users,
+  UserCheck,
+  UserX,
+  Clock
 } from 'lucide-react';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../common/Modal';
-import { Branch } from '../../types';
+import { Branch, User as UserType } from '../../types';
+import { authService } from '../../services/authService';
 
 export const DepartmentSettings: React.FC = () => {
   const { 
@@ -19,7 +23,6 @@ export const DepartmentSettings: React.FC = () => {
     addBranch, 
     updateBranch, 
     selectedBranchId, 
-    setSelectedBranchId, 
     addToast 
   } = useDepartment();
 
@@ -32,6 +35,50 @@ export const DepartmentSettings: React.FC = () => {
 
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+
+  // Faculty management state (scoped to HOD's department, or all if Super Admin)
+  const targetBranchId = isSuperAdmin ? undefined : selectedBranchId;
+  const [pendingFaculty, setPendingFaculty] = useState<UserType[]>(() =>
+    authService.getPendingFaculty(targetBranchId)
+  );
+  const [approvedFaculty, setApprovedFaculty] = useState<UserType[]>(() =>
+    authService.getApprovedFaculty(targetBranchId)
+  );
+
+  useEffect(() => {
+    const refresh = () => {
+      setPendingFaculty(authService.getPendingFaculty(targetBranchId));
+      setApprovedFaculty(authService.getApprovedFaculty(targetBranchId));
+    };
+    refresh();
+    window.addEventListener('adt_faculty_updated', refresh);
+    return () => window.removeEventListener('adt_faculty_updated', refresh);
+  }, [targetBranchId]);
+
+  const handleApproveFaculty = (faculty: UserType) => {
+    const res = authService.approveFaculty(faculty.id, currentUser.name);
+    if (res.success) {
+      addToast(`Approved ${faculty.name}! They can now log in to the system.`, 'success');
+      setPendingFaculty(authService.getPendingFaculty(targetBranchId));
+      setApprovedFaculty(authService.getApprovedFaculty(targetBranchId));
+    } else {
+      addToast(res.error || 'Failed to approve faculty.', 'error');
+    }
+  };
+
+  const handleRejectFaculty = (faculty: UserType) => {
+    if (!window.confirm(`Are you sure you want to reject registration for ${faculty.name}?`)) {
+      return;
+    }
+    const res = authService.rejectFaculty(faculty.id, currentUser.name);
+    if (res.success) {
+      addToast(`Registration request for ${faculty.name} has been rejected.`, 'info');
+      setPendingFaculty(authService.getPendingFaculty(targetBranchId));
+      setApprovedFaculty(authService.getApprovedFaculty(targetBranchId));
+    } else {
+      addToast(res.error || 'Failed to reject faculty.', 'error');
+    }
+  };
 
   // Form states for branch
   const [branchCode, setBranchCode] = useState('');
@@ -254,19 +301,11 @@ export const DepartmentSettings: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
-                  {!isCurrent && (
-                    <button
-                      onClick={() => setSelectedBranchId(branch.id)}
-                      className="btn btn-secondary btn-sm"
-                      style={{ flex: 1 }}
-                    >
-                      Switch to Branch
-                    </button>
-                  )}
                   {canEditThis ? (
                     <button
                       onClick={() => handleOpenEditBranch(branch)}
                       className="btn btn-primary btn-sm"
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
                     >
                       <Edit3 size={13} /> Edit Details
                     </button>
@@ -274,7 +313,17 @@ export const DepartmentSettings: React.FC = () => {
                     <button
                       disabled
                       className="btn btn-secondary btn-sm"
-                      style={{ opacity: 0.45, cursor: 'not-allowed', background: 'transparent', borderStyle: 'dashed' }}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem',
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                        background: 'transparent',
+                        borderStyle: 'dashed'
+                      }}
                       title={`Editing restricted: Only ${branch.hodName} can edit ${branch.name} details.`}
                     >
                       <Lock size={12} /> Restricted
@@ -287,45 +336,153 @@ export const DepartmentSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Firebase Cloud Database Status Panel */}
-      <div className="glass-panel" style={{ padding: '1.5rem', marginTop: '1.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <Database size={20} color="var(--accent-indigo)" />
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>Cloud Database & Backend Services</h3>
+      {/* Faculty Verification & Roster Management Section */}
+      <div className="glass-panel" style={{ padding: '1.75rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Users size={20} color="var(--accent-indigo)" />
+              Faculty Members & Account Verifications
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              Approve self-registered faculty profiles and manage departmental teaching personnel
+            </p>
           </div>
-          <span className="badge badge-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-            <CheckCircle2 size={13} /> Firebase Live Connected
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="badge badge-amber">{pendingFaculty.length} Pending Approval</span>
+            <span className="badge badge-emerald">{approvedFaculty.length} Approved Active</span>
+          </div>
         </div>
 
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-          Your application is directly synchronized with Google Cloud Firestore. Changes to timetables, teaching topic logs, events, and room bookings persist in real-time across all devices.
-        </p>
+        {/* Pending Verification Requests Sub-section */}
+        <div style={{ marginBottom: '1.75rem' }}>
+          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#f59e0b' }}>
+            <Clock size={16} /> Pending Verification Requests ({pendingFaculty.length})
+          </h4>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Database Engine</div>
-            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', color: 'var(--accent-indigo)' }}>Google Cloud Firestore</div>
-          </div>
+          {pendingFaculty.length === 0 ? (
+            <div style={{ padding: '1.25rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              No pending faculty verification requests for this department. All self-registered profiles are processed.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {pendingFaculty.map(fac => (
+                <div
+                  key={fac.id}
+                  style={{
+                    padding: '1rem 1.25rem',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'rgba(245, 158, 11, 0.06)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: '0.95rem' }}>{fac.name}</strong>
+                      <span className="badge badge-amber" style={{ fontSize: '0.7rem' }}>
+                        PENDING_VERIFICATION
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <span>✉️ {fac.email}</span>
+                      <span>🏛️ Dept: <strong>{fac.branchName}</strong></span>
+                      {fac.registeredAt && (
+                        <span>📅 Registered: {new Date(fac.registeredAt).toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
 
-          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Project ID</div>
-            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', fontFamily: 'var(--font-mono)' }}>adt-academicdepartmentaltrack</div>
-          </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => handleApproveFaculty(fac)}
+                      className="btn btn-sm"
+                      style={{
+                        background: '#10b981',
+                        color: '#fff',
+                        border: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontWeight: 600,
+                        fontSize: '0.8rem',
+                        padding: '0.4rem 0.85rem'
+                      }}
+                    >
+                      <UserCheck size={14} /> Approve Profile
+                    </button>
+                    <button
+                      onClick={() => handleRejectFaculty(fac)}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        color: '#ef4444',
+                        borderColor: 'rgba(239, 68, 68, 0.3)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontSize: '0.8rem',
+                        padding: '0.4rem 0.75rem'
+                      }}
+                    >
+                      <UserX size={14} /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Real-time Listeners</div>
-            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', color: '#10b981' }}>Active (Snapshot Sync)</div>
-          </div>
+        {/* Approved Registered Faculty Members Roster */}
+        <div>
+          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981' }}>
+            <CheckCircle2 size={16} /> Approved Registered Faculty Roster ({approvedFaculty.length})
+          </h4>
 
-          <div style={{ background: 'var(--bg-input)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Offline Resiliency</div>
-            <div style={{ fontSize: '0.925rem', fontWeight: 700, marginTop: '0.2rem', color: '#f59e0b' }}>Local Cache Enabled</div>
-          </div>
+          {approvedFaculty.length === 0 ? (
+            <div style={{ padding: '1.25rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              No newly registered faculty profiles in this department yet.
+            </div>
+          ) : (
+            <div className="cards-grid-auto">
+              {approvedFaculty.map(fac => (
+                <div
+                  key={fac.id}
+                  style={{
+                    padding: '1rem',
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <strong style={{ fontSize: '0.9rem' }}>{fac.name}</strong>
+                    <span className="badge badge-emerald" style={{ fontSize: '0.68rem' }}>
+                      APPROVED
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    <div>✉️ {fac.email}</div>
+                    <div>💼 {fac.designation || 'Assistant Professor'}</div>
+                    {fac.approvedBy && (
+                      <div style={{ marginTop: '0.25rem', color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+                        Approved by: <strong>{fac.approvedBy}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
 
       {/* Add / Edit Branch Modal */}
       <Modal
@@ -381,7 +538,7 @@ export const DepartmentSettings: React.FC = () => {
                 <label className="form-label">HOD Email Address</label>
                 <input
                   type="email"
-                  placeholder="hod.dept@gmail.com"
+                  placeholder="hod.dept@sjdc.edu"
                   className="form-input"
                   value={hodEmail}
                   onChange={e => setHodEmail(e.target.value)}

@@ -23,10 +23,10 @@ import {
   INITIAL_ROOMS,
   INITIAL_TIMETABLE,
   INITIAL_TOPIC_LOGS,
-  INITIAL_EVENTS,
   INITIAL_BOOKINGS,
   INITIAL_NOTIFICATIONS
 } from './mockData';
+import { isDemoEvent } from '../utils/eventStatus';
 
 // Helper to remove any undefined fields before writing to Firestore
 function sanitizeForFirestore<T extends Record<string, any>>(data: T): Record<string, any> {
@@ -41,23 +41,47 @@ function sanitizeForFirestore<T extends Record<string, any>>(data: T): Record<st
 
 export const firestoreService = {
   // ==========================================
+  // PURGE DEMO EVENTS FROM CLOUD FIRESTORE
+  // ==========================================
+  purgeDemoEvents: async (): Promise<void> => {
+    try {
+      const eventsSnap = await getDocs(collection(db, 'events'));
+      const batch = writeBatch(db);
+      let count = 0;
+      for (const d of eventsSnap.docs) {
+        const data = d.data();
+        if (isDemoEvent({ id: d.id, title: data.title })) {
+          batch.delete(doc(db, 'events', d.id));
+          count++;
+        }
+      }
+      if (count > 0) {
+        await batch.commit();
+        console.log(`[Firestore] Purged ${count} demo events from cloud.`);
+      }
+    } catch (err) {
+      console.warn('[Firestore] Could not purge demo events from cloud:', err);
+    }
+  },
+
+  // ==========================================
   // SEED INITIAL DATA (if Firestore is empty)
   // ==========================================
   seedInitialDataIfEmpty: async (): Promise<boolean> => {
     try {
-      const eventsSnap = await getDocs(collection(db, 'events'));
-      if (eventsSnap.empty) {
-        console.log('[Firestore] Seeding initial data to Firestore...');
-        
-        // Seed Events
-        for (const ev of INITIAL_EVENTS) {
-          await setDoc(doc(db, 'events', ev.id), sanitizeForFirestore(ev));
-        }
+      // Purge any lingering demo events in Firestore first
+      await firestoreService.purgeDemoEvents();
 
-        // Seed Branches
-        for (const b of INITIAL_BRANCHES) {
+      const branchesSnap = await getDocs(collection(db, 'branches'));
+      const existingBranchIds = new Set(branchesSnap.docs.map(d => d.id));
+      for (const b of INITIAL_BRANCHES) {
+        if (!existingBranchIds.has(b.id)) {
           await setDoc(doc(db, 'branches', b.id), sanitizeForFirestore(b));
         }
+      }
+
+      if (branchesSnap.empty) {
+        console.log('[Firestore] Seeding initial infrastructure data to Firestore...');
 
         // Seed Rooms
         for (const r of INITIAL_ROOMS) {
@@ -84,7 +108,7 @@ export const firestoreService = {
           await setDoc(doc(db, 'notifications', notif.id), sanitizeForFirestore(notif));
         }
 
-        console.log('[Firestore] Initial data seeding complete!');
+        console.log('[Firestore] Initial infrastructure seeding complete!');
         return true;
       }
       return false;
@@ -101,10 +125,10 @@ export const firestoreService = {
     return onSnapshot(
       collection(db, 'events'),
       snapshot => {
-        if (!snapshot.empty) {
-          const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as DepartmentEvent));
-          onData(list);
-        }
+        const list = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as DepartmentEvent))
+          .filter(e => !isDemoEvent(e));
+        onData(list);
       },
       err => {
         console.warn('[Firestore] Events sync warning (falling back to local cache):', err.message);
@@ -146,10 +170,18 @@ export const firestoreService = {
     return onSnapshot(
       collection(db, 'branches'),
       snapshot => {
-        if (!snapshot.empty) {
-          const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Branch));
-          onData(list);
-        }
+        const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Branch));
+        const branchMap = new Map<string, Branch>();
+        INITIAL_BRANCHES.forEach(b => branchMap.set(b.id, { ...b }));
+        list.forEach(b => {
+          const canonical = branchMap.get(b.id);
+          if (canonical) {
+            branchMap.set(b.id, { ...canonical, ...b });
+          } else {
+            branchMap.set(b.id, b);
+          }
+        });
+        onData(Array.from(branchMap.values()));
       },
       err => {
         console.warn('[Firestore] Branches sync warning:', err.message);
@@ -204,20 +236,32 @@ export const firestoreService = {
   // MUTATION HELPERS (CRUD TO FIRESTORE)
   // ==========================================
 
-  // Events
-  saveEvent: async (event: DepartmentEvent): Promise<void> => {
+  // Events (with creator authorization enforcement)
+  saveEvent: async (event: DepartmentEvent, requestingUserId?: string): Promise<boolean> => {
     try {
+      if (requestingUserId && event.createdBy && event.createdBy !== requestingUserId) {
+        console.warn(`[Firestore Authorization] Denied: User ${requestingUserId} is not the creator of event ${event.id}`);
+        return false;
+      }
       await setDoc(doc(db, 'events', event.id), sanitizeForFirestore(event));
+      return true;
     } catch (err) {
       console.warn('[Firestore] Failed to save event to cloud:', err);
+      return false;
     }
   },
 
-  deleteEvent: async (id: string): Promise<void> => {
+  deleteEvent: async (id: string, requestingUserId?: string, eventCreatorId?: string): Promise<boolean> => {
     try {
+      if (requestingUserId && eventCreatorId && eventCreatorId !== requestingUserId) {
+        console.warn(`[Firestore Authorization] Denied: User ${requestingUserId} cannot delete event created by ${eventCreatorId}`);
+        return false;
+      }
       await deleteDoc(doc(db, 'events', id));
+      return true;
     } catch (err) {
       console.warn('[Firestore] Failed to delete event from cloud:', err);
+      return false;
     }
   },
 

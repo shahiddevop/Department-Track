@@ -1,5 +1,7 @@
 export type UserRole = 'admin' | 'faculty' | 'student';
 
+export type AccountStatus = 'PENDING_VERIFICATION' | 'APPROVED' | 'REJECTED';
+
 export interface User {
   id: string;
   name: string;
@@ -14,6 +16,10 @@ export interface User {
   officeLocation?: string;
   bio?: string;
   isSuperAdmin?: boolean;
+  status?: AccountStatus;
+  registeredAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
 }
 
 export interface Branch {
@@ -145,6 +151,8 @@ export interface DepartmentEvent {
   registeredCount: number;
   maxSeats: number;
   keyHighlights: string[];
+  createdBy?: string;
+  creatorName?: string;
 }
 
 export type RoomType = 

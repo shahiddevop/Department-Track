@@ -16,8 +16,10 @@ export const EventModal: React.FC<EventModalProps> = ({
   onClose,
   initialEvent
 }) => {
-  const { selectedBranchId, addEvent, updateEvent, rooms } = useDepartment();
+  const { selectedBranchId, addEvent, updateEvent, isEventCreator, addToast } = useDepartment();
   const { currentUser } = useAuth();
+
+  const isPermitted = !initialEvent || isEventCreator(initialEvent);
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('Workshop');
@@ -39,13 +41,13 @@ export const EventModal: React.FC<EventModalProps> = ({
     if (initialEvent) {
       setTitle(initialEvent.title);
       const cat = initialEvent.category;
-      const normalizedCat: EventCategory = 
+      const normalizedCat: EventCategory =
         cat === 'Hands-on Workshop' ? 'Workshop' :
-        cat === 'National Seminar' ? 'Seminar' :
-        cat === 'Technical Fest' ? 'Competitions' :
-        cat === 'Hackathon' ? 'Competitions' :
-        cat === 'Industry Visit' ? 'Field Trip' :
-        cat;
+          cat === 'National Seminar' ? 'Seminar' :
+            cat === 'Technical Fest' ? 'Competitions' :
+              cat === 'Hackathon' ? 'Competitions' :
+                cat === 'Industry Visit' ? 'Field Trip' :
+                  cat;
       setCategory(normalizedCat);
       setOrganizingBody(initialEvent.organizingBody || 'Dept');
       setDescription(initialEvent.description);
@@ -85,6 +87,11 @@ export const EventModal: React.FC<EventModalProps> = ({
     e.preventDefault();
     if (!title.trim() || !description.trim() || !venue.trim()) return;
 
+    if (initialEvent && !isPermitted) {
+      addToast('Unauthorized: Only the creator of this event can edit it.', 'error');
+      return;
+    }
+
     const highlights = highlightsInput
       .split(',')
       .map(h => h.trim())
@@ -112,9 +119,17 @@ export const EventModal: React.FC<EventModalProps> = ({
     };
 
     if (initialEvent) {
-      updateEvent(initialEvent.id, eventPayload);
+      updateEvent(initialEvent.id, {
+        ...eventPayload,
+        createdBy: initialEvent.createdBy,
+        creatorName: initialEvent.creatorName
+      });
     } else {
-      addEvent(eventPayload);
+      addEvent({
+        ...eventPayload,
+        createdBy: currentUser.id,
+        creatorName: currentUser.name
+      });
     }
     onClose();
   };
@@ -130,6 +145,25 @@ export const EventModal: React.FC<EventModalProps> = ({
     >
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
+          {initialEvent && !isPermitted && (
+            <div
+              style={{
+                padding: '0.85rem 1rem',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius-md)',
+                color: '#ef4444',
+                marginBottom: '1rem',
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <strong>Access Denied:</strong> This event was created by <em>{initialEvent.creatorName || initialEvent.facultyCoordinator}</em>. Only the original creator is authorized to modify it.
+            </div>
+          )}
+
           {/* Title & Category */}
           <div className="form-grid-2-1">
             <div className="form-group">
@@ -338,7 +372,11 @@ export const EventModal: React.FC<EventModalProps> = ({
           <button type="button" onClick={onClose} className="btn btn-secondary">
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={Boolean(initialEvent && !isPermitted)}
+          >
             {initialEvent ? 'Save Event Changes' : 'Schedule & Publish Event'}
           </button>
         </div>

@@ -6,12 +6,14 @@ import {
   CalendarRange,
   DoorClosed,
   Settings,
-  GraduationCap,
   Sparkles,
   X,
-  User
+  User,
+  LogOut
 } from 'lucide-react';
+import { Logo } from './Logo';
 import { useDepartment } from '../../context/DepartmentContext';
+import { useAuth } from '../../context/AuthContext';
 import { TabType } from '../../types';
 
 interface SidebarProps {
@@ -28,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse
 }) => {
   const { activeTab, setActiveTab, selectedBranch } = useDepartment();
+  const { logout, currentUser } = useAuth();
 
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -81,22 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
-                flexShrink: 0
-              }}
-            >
-              <GraduationCap size={24} />
-            </div>
+            <Logo size={42} variant="badge" />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#001f3f' }}>
@@ -202,6 +190,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
         </nav>
+
+        {/* Logout Button */}
+        <div style={{ padding: '0 1rem', marginTop: '0.5rem' }}>
+          <button
+            onClick={() => { if (window.confirm('Are you sure you want to sign out?')) logout(); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.7rem 0.85rem',
+              background: 'rgba(239, 68, 68, 0.06)',
+              border: '1px solid rgba(239, 68, 68, 0.15)',
+              borderRadius: 'var(--radius-md)',
+              color: '#ef4444',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.15)';
+            }}
+            title={`Sign out ${currentUser.name}`}
+          >
+            <LogOut size={16} />
+            {!isCollapsed && 'Sign Out'}
+          </button>
+        </div>
 
         {/* Department Summary Footer Card */}
         <div style={{ padding: '1rem', borderTop: '1px solid rgba(0, 31, 63, 0.1)' }}>

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  CalendarRange, 
-  Plus, 
-  Download, 
-  Search, 
-  Sparkles, 
-  Award, 
+import {
+  CalendarRange,
+  Plus,
+  Download,
+  Search,
+  Sparkles,
+  Award,
   CheckCircle,
   Filter,
   AlertCircle
@@ -19,7 +19,7 @@ import { EventModal } from './EventModal';
 import { calculateEventStatus, getEventDateTimes } from '../../utils/eventStatus';
 
 export const EventList: React.FC = () => {
-  const { events, branches, selectedBranch, selectedBranchId, deleteEvent } = useDepartment();
+  const { events, branches, selectedBranch, selectedBranchId, deleteEvent, isEventCreator, addToast } = useDepartment();
   const { canCreateEvents } = useAuth();
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('ALL');
@@ -46,7 +46,7 @@ export const EventList: React.FC = () => {
 
     if (selectedCategory !== 'ALL') {
       const matchExact = ev.category === selectedCategory;
-      const matchLegacy = 
+      const matchLegacy =
         (selectedCategory === 'Competitions' && (ev.category === 'Technical Fest' || ev.category === 'Hackathon')) ||
         (selectedCategory === 'Workshop' && ev.category === 'Hands-on Workshop') ||
         (selectedCategory === 'Seminar' && ev.category === 'National Seminar') ||
@@ -116,6 +116,10 @@ export const EventList: React.FC = () => {
   };
 
   const handleEditEvent = (event: DepartmentEvent) => {
+    if (!isEventCreator(event)) {
+      addToast(`Access Denied: Only the creator of "${event.title}" can edit it.`, 'error');
+      return;
+    }
     setEditingEvent(event);
     setIsModalOpen(true);
   };
@@ -153,7 +157,7 @@ export const EventList: React.FC = () => {
       </div>
 
       {/* Category Pills & Filters */}
-      <div 
+      <div
         className="glass-panel no-print"
         style={{
           padding: '1.25rem',
@@ -236,11 +240,11 @@ export const EventList: React.FC = () => {
           {/* Upcoming Events (Top) */}
           {upcomingEvents.length > 0 && (
             <div>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginBottom: '1.25rem',
                   paddingBottom: '0.65rem',
                   borderBottom: '1px solid var(--border-subtle)',
@@ -274,11 +278,11 @@ export const EventList: React.FC = () => {
           {/* Completed Events (Bottom) */}
           {completedEvents.length > 0 && (
             <div>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginBottom: '1.25rem',
                   paddingBottom: '0.65rem',
                   borderBottom: '1px solid var(--border-subtle)',
@@ -312,11 +316,11 @@ export const EventList: React.FC = () => {
           {/* Postponed / Cancelled Events (if any) */}
           {otherEvents.length > 0 && (
             <div>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginBottom: '1.25rem',
                   paddingBottom: '0.65rem',
                   borderBottom: '1px solid var(--border-subtle)',

@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  DoorClosed, 
-  Plus, 
-  Download, 
-  Search, 
-  Users, 
-  Cpu, 
-  Tv, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle, 
+import {
+  DoorClosed,
+  Plus,
+  Download,
+  Search,
+  Users,
+  Cpu,
+  Tv,
+  CheckCircle,
+  Clock,
+  AlertCircle,
   Layers,
   Sparkles,
   CalendarCheck,
@@ -25,15 +25,15 @@ import { RoomBookingModal } from './RoomBookingModal';
 import { getFacultyAssignedRoom } from '../../utils/roomAssignment';
 
 export const RoomGrid: React.FC = () => {
-  const { 
-    rooms, 
-    bookings, 
-    updateRoomStatus, 
-    deleteRoomBooking, 
+  const {
+    rooms,
+    bookings,
+    updateRoomStatus,
+    deleteRoomBooking,
     clearAllBookings,
-    selectedBranch, 
-    selectedBranchId, 
-    timetable 
+    selectedBranch,
+    selectedBranchId,
+    timetable
   } = useDepartment();
   const { canBookRooms, canManageDepartment, currentUser } = useAuth();
 
@@ -108,12 +108,12 @@ export const RoomGrid: React.FC = () => {
             Monitor real-time classroom & laboratory occupancy, inspect hardware equipment, and schedule reservations.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
-            <span 
-              className="badge badge-indigo" 
-              style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '0.4rem', 
+            <span
+              className="badge badge-indigo"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.78rem'
               }}
@@ -141,7 +141,7 @@ export const RoomGrid: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div 
+      <div
         className="glass-panel no-print"
         style={{
           padding: '1.25rem',
@@ -196,8 +196,17 @@ export const RoomGrid: React.FC = () => {
       </div>
 
       {/* Rooms Grid */}
-      <div className="cards-grid-auto" style={{ marginBottom: '2.5rem' }}>
-        {filteredRooms.map(room => {
+      {filteredRooms.length === 0 ? (
+        <div className="glass-panel" style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-muted)', marginBottom: '2.5rem' }}>
+          <DoorClosed size={42} style={{ margin: '0 auto 0.85rem auto', opacity: 0.4 }} />
+          <h4 style={{ fontSize: '1.15rem', fontWeight: 600 }}>No facilities or rooms found</h4>
+          <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
+            {rooms.length === 0 ? 'No rooms have been registered in the institutional inventory yet.' : 'No rooms match your filter criteria.'}
+          </p>
+        </div>
+      ) : (
+        <div className="cards-grid-auto" style={{ marginBottom: '2.5rem' }}>
+          {filteredRooms.map(room => {
           const isAvailable = room.currentStatus === 'Available';
           const isOccupied = room.currentStatus === 'Occupied';
           const isFacultyDesignated = facultyAssignedRoomInfo.room.id === room.id;
@@ -221,10 +230,10 @@ export const RoomGrid: React.FC = () => {
                 {/* Top Row */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span 
-                      style={{ 
-                        fontFamily: 'var(--font-mono)', 
-                        fontSize: '1rem', 
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '1rem',
                         fontWeight: 800,
                         background: 'rgba(99, 102, 241, 0.12)',
                         color: 'var(--accent-indigo)',
@@ -256,7 +265,7 @@ export const RoomGrid: React.FC = () => {
 
                 {/* Live Occupant / Schedule Status */}
                 {isOccupied && (
-                  <div 
+                  <div
                     style={{
                       padding: '0.75rem 0.95rem',
                       background: 'rgba(244, 63, 94, 0.1)',
@@ -311,7 +320,8 @@ export const RoomGrid: React.FC = () => {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Recent Reservations Table */}
       <div className="glass-panel" style={{ padding: '1.5rem' }}>

@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { 
-  CalendarDays, 
-  Plus, 
-  Download, 
-  Printer, 
-  Search, 
-  Filter, 
-  Clock, 
-  MapPin, 
-  User, 
-  Edit3, 
-  Trash2, 
-  AlertCircle, 
+import {
+  CalendarDays,
+  Plus,
+  Download,
+  Printer,
+  Search,
+  Filter,
+  Clock,
+  MapPin,
+  User,
+  Edit3,
+  Trash2,
+  AlertCircle,
   Layers,
   Lock,
   Globe,
@@ -31,12 +31,12 @@ import { TIMETABLE_PERIODS, getSlotPeriod, TimetablePeriod } from '../../utils/t
 const DAYS_OF_WEEK: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const TimetableGrid: React.FC = () => {
-  const { 
-    timetable, 
-    selectedBranch, 
-    selectedBranchId, 
-    deleteTimetableSlot, 
-    rooms 
+  const {
+    timetable,
+    selectedBranch,
+    selectedBranchId,
+    deleteTimetableSlot,
+    rooms
   } = useDepartment();
 
   const { currentUser, canEditBranchContent } = useAuth();
@@ -45,6 +45,7 @@ export const TimetableGrid: React.FC = () => {
 
   // Filters State
   const [selectedSemester, setSelectedSemester] = useState<number | 'ALL'>('ALL');
+  const [selectedSection, setSelectedSection] = useState<string>('ALL');
   const [selectedDay, setSelectedDay] = useState<string>('ALL');
   const [facultyFilter, setFacultyFilter] = useState<string>('ALL');
   const [roomFilter, setRoomFilter] = useState<string>('ALL');
@@ -59,6 +60,7 @@ export const TimetableGrid: React.FC = () => {
   const [modalDefaultPeriod, setModalDefaultPeriod] = useState<number>(1);
   const [modalDefaultStartTime, setModalDefaultStartTime] = useState<string>('08:25');
   const [modalDefaultEndTime, setModalDefaultEndTime] = useState<string>('09:15');
+  const [modalDefaultSection, setModalDefaultSection] = useState<string>('A');
 
   // Can user add slot to timetable
   const canAddSlot = canEditTimetable || isAccountSpecific;
@@ -71,6 +73,8 @@ export const TimetableGrid: React.FC = () => {
 
   // Extract unique faculties for filter (for Super Admin / Student view)
   const uniqueFaculties = Array.from(new Set(timetable.map(s => s.facultyName))).filter(Boolean);
+  // Extract unique sections
+  const uniqueSections = Array.from(new Set(timetable.map(s => s.section).filter(Boolean))).sort();
 
   // Filtered timetable slots
   const filteredSlots = timetable.filter(slot => {
@@ -84,6 +88,9 @@ export const TimetableGrid: React.FC = () => {
 
     // Semester filter
     if (selectedSemester !== 'ALL' && slot.semester !== selectedSemester) return false;
+
+    // Section filter
+    if (selectedSection !== 'ALL' && slot.section !== selectedSection) return false;
 
     // Day filter
     if (selectedDay !== 'ALL' && slot.day !== selectedDay) return false;
@@ -119,6 +126,7 @@ export const TimetableGrid: React.FC = () => {
     setModalDefaultPeriod(slot.period || getSlotPeriod(slot));
     setModalDefaultStartTime(slot.startTime);
     setModalDefaultEndTime(slot.endTime);
+    setModalDefaultSection(slot.section || 'A');
     setIsModalOpen(true);
   };
 
@@ -128,6 +136,7 @@ export const TimetableGrid: React.FC = () => {
     setModalDefaultPeriod(1);
     setModalDefaultStartTime('08:25');
     setModalDefaultEndTime('09:15');
+    setModalDefaultSection(selectedSection !== 'ALL' ? selectedSection : 'A');
     setIsModalOpen(true);
   };
 
@@ -137,6 +146,7 @@ export const TimetableGrid: React.FC = () => {
     setModalDefaultPeriod(1);
     setModalDefaultStartTime('08:25');
     setModalDefaultEndTime('09:15');
+    setModalDefaultSection(selectedSection !== 'ALL' ? selectedSection : 'A');
     setIsModalOpen(true);
   };
 
@@ -146,6 +156,7 @@ export const TimetableGrid: React.FC = () => {
     setModalDefaultPeriod(period.periodNumber || 1);
     setModalDefaultStartTime(period.defaultStartTime);
     setModalDefaultEndTime(period.defaultEndTime);
+    setModalDefaultSection(selectedSection !== 'ALL' ? selectedSection : 'A');
     setIsModalOpen(true);
   };
 
@@ -157,7 +168,7 @@ export const TimetableGrid: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Academic Timetable & Schedules</h1>
             <span className="badge badge-indigo">
-              {showAllDepartments ? 'All Departments' : selectedBranch.code} • {selectedSemester === 'ALL' ? 'All Semesters' : `Sem ${selectedSemester}`}
+              {showAllDepartments ? 'All Departments' : selectedBranch.code} • {selectedSemester === 'ALL' ? 'All Semesters' : `Sem ${selectedSemester}`} {selectedSection !== 'ALL' ? `• Sec ${selectedSection}` : ''}
             </span>
             {isAccountSpecific && (
               <span className="badge badge-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -236,7 +247,7 @@ export const TimetableGrid: React.FC = () => {
       )}
 
       {/* Filter Toolbar */}
-      <div 
+      <div
         className="glass-panel no-print"
         style={{
           padding: '1.25rem',
@@ -258,6 +269,21 @@ export const TimetableGrid: React.FC = () => {
               <option value="ALL">All Semesters</option>
               {[1, 2, 3, 4, 5, 6].map(s => (
                 <option key={s} value={s}>Semester {s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section Selector */}
+          <div>
+            <label className="form-label" style={{ fontSize: '0.75rem' }}>Section</label>
+            <select
+              className="form-select"
+              value={selectedSection}
+              onChange={e => setSelectedSection(e.target.value)}
+            >
+              <option value="ALL">All Sections</option>
+              {Array.from(new Set(['A', 'B', 'C', 'D', ...uniqueSections])).sort().map(sec => (
+                <option key={sec} value={sec}>Section {sec}</option>
               ))}
             </select>
           </div>
@@ -438,594 +464,593 @@ export const TimetableGrid: React.FC = () => {
               <div className="timetable-scroll-outer">
                 <div className="timetable-matrix-grid">
                   {TIMETABLE_PERIODS.map(period => {
-                  if (period.isBreak) {
+                    if (period.isBreak) {
+                      return (
+                        <div
+                          key={period.id}
+                          style={{
+                            background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%)',
+                            border: '1px dashed rgba(245, 158, 11, 0.35)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '0.5rem 0.35rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            textAlign: 'center',
+                            minHeight: '190px',
+                            minWidth: 0,
+                            transition: 'all var(--tr-fast)'
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginBottom: '0.4rem'
+                            }}
+                          >
+                            <Coffee size={16} color="var(--accent-amber, #f59e0b)" />
+                          </div>
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              color: 'var(--accent-amber, #f59e0b)',
+                              marginBottom: '0.15rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            Break Interval
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '0.65rem',
+                              color: 'var(--text-muted)',
+                              marginBottom: '0.4rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            {period.timing}
+                          </span>
+                          <span
+                            className="badge badge-amber"
+                            style={{
+                              fontSize: '0.62rem',
+                              padding: '0.15rem 0.35rem',
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              color: '#f59e0b',
+                              border: '1px solid rgba(245, 158, 11, 0.3)'
+                            }}
+                          >
+                            Recess
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    // Class Period (1, 2, 3, 4, 5, 6)
+                    const periodSlots = daySlots.filter(s => getSlotPeriod(s) === period.periodNumber);
+
                     return (
                       <div
                         key={period.id}
                         style={{
-                          background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%)',
-                          border: '1px dashed rgba(245, 158, 11, 0.35)',
+                          background: 'rgba(15, 23, 42, 0.5)',
+                          border: '1px solid var(--border-subtle)',
                           borderRadius: 'var(--radius-md)',
-                          padding: '0.5rem 0.35rem',
+                          padding: '0.5rem 0.4rem',
                           display: 'flex',
                           flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          textAlign: 'center',
+                          gap: '0.45rem',
                           minHeight: '190px',
-                          minWidth: 0,
-                          transition: 'all var(--tr-fast)'
+                          minWidth: 0
                         }}
                       >
+                        {/* Period Column Header */}
                         <div
                           style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            background: 'rgba(245, 158, 11, 0.15)',
                             display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '0.4rem'
+                            paddingBottom: '0.35rem',
+                            borderBottom: '1px solid var(--border-subtle)',
+                            textAlign: 'center',
+                            width: '100%'
                           }}
                         >
-                          <Coffee size={16} color="var(--accent-amber, #f59e0b)" />
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              color: 'var(--text-primary)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            {period.name}
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '0.65rem',
+                              color: 'var(--text-muted)',
+                              marginTop: '0.05rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            {period.timing}
+                          </span>
                         </div>
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            fontSize: '0.78rem',
-                            color: 'var(--accent-amber, #f59e0b)',
-                            marginBottom: '0.15rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '100%'
-                          }}
-                        >
-                          Break Interval
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '0.65rem',
-                            color: 'var(--text-muted)',
-                            marginBottom: '0.4rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '100%'
-                          }}
-                        >
-                          {period.timing}
-                        </span>
-                        <span
-                          className="badge badge-amber"
-                          style={{
-                            fontSize: '0.62rem',
-                            padding: '0.15rem 0.35rem',
-                            background: 'rgba(245, 158, 11, 0.15)',
-                            color: '#f59e0b',
-                            border: '1px solid rgba(245, 158, 11, 0.3)'
-                          }}
-                        >
-                          Recess
-                        </span>
+
+                        {/* Slots in this period */}
+                        {periodSlots.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1, minWidth: 0 }}>
+                            {periodSlots.map(slot => (
+                              <div
+                                key={slot.id}
+                                style={{
+                                  background: 'var(--bg-input)',
+                                  border: '1px solid var(--border-subtle)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  padding: '0.5rem 0.4rem',
+                                  position: 'relative',
+                                  borderLeft: `3px solid ${slot.color || 'var(--accent-primary)'}`,
+                                  minWidth: 0,
+                                  transition: 'transform var(--tr-fast), box-shadow var(--tr-fast)'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem', gap: '0.25rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                                    {slot.section && (
+                                      <span
+                                        className="badge badge-purple"
+                                        style={{ fontSize: '0.62rem', padding: '0.06rem 0.35rem', fontWeight: 700 }}
+                                        title={`Section ${slot.section}`}
+                                      >
+                                        Sec {slot.section}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span
+                                    className={`badge ${slot.type === 'Lab' ? 'badge-cyan' : slot.type === 'Tutorial' ? 'badge-amber' : slot.type === 'Seminar' ? 'badge-rose' : 'badge-indigo'}`}
+                                    style={{ fontSize: '0.62rem', padding: '0.06rem 0.32rem' }}
+                                  >
+                                    {slot.type === 'Lecture' ? 'Lec' : slot.type}
+                                  </span>
+                                </div>
+
+                                <h4
+                                  style={{
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    lineHeight: 1.25,
+                                    marginBottom: '0.35rem',
+                                    color: 'var(--text-primary)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                  title={slot.subjectName}
+                                >
+                                  {slot.subjectName}
+                                </h4>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <Clock size={11} style={{ color: 'var(--accent-indigo)', flexShrink: 0 }} />
+                                    <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }}>
+                                      {slot.startTime} - {slot.endTime}
+                                    </span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <User size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {slot.facultyName}
+                                    </span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <MapPin size={11} style={{ color: 'var(--accent-emerald)', flexShrink: 0 }} />
+                                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {slot.roomName}
+                                    </span>
+                                  </div>
+
+                                  {slot.section && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <Layers size={11} style={{ color: 'var(--accent-violet, #a855f7)', flexShrink: 0 }} />
+                                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>
+                                        Section {slot.section}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {canUserManageSlot(slot) && (
+                                  <div
+                                    className="no-print"
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'flex-end',
+                                      gap: '0.25rem',
+                                      marginTop: '0.45rem',
+                                      borderTop: '1px solid var(--border-subtle)',
+                                      paddingTop: '0.35rem'
+                                    }}
+                                  >
+                                    <button
+                                      onClick={() => handleEditSlot(slot)}
+                                      className="btn btn-secondary btn-sm"
+                                      style={{ padding: '0.15rem 0.35rem', fontSize: '0.65rem', height: '22px' }}
+                                      title="Edit Slot"
+                                    >
+                                      <Edit3 size={10} /> Edit
+                                    </button>
+                                    <button
+                                      onClick={() => deleteTimetableSlot(slot.id)}
+                                      className="btn btn-danger btn-sm"
+                                      style={{ padding: '0.15rem 0.35rem', fontSize: '0.65rem', height: '22px' }}
+                                      title="Delete Slot"
+                                    >
+                                      <Trash2 size={10} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+
+                            {/* Button to add another slot in this period */}
+                            {canAddSlot && (
+                              <button
+                                onClick={() => handleAddSlotToPeriod(dayName, period)}
+                                className="btn btn-secondary btn-sm no-print"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '0.68rem',
+                                  padding: '0.2rem 0.35rem',
+                                  borderStyle: 'dashed',
+                                  marginTop: 'auto',
+                                  height: '24px'
+                                }}
+                              >
+                                <Plus size={10} /> Add
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          /* Empty Period Slot */
+                          <div
+                            style={{
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minHeight: '120px',
+                              minWidth: 0
+                            }}
+                          >
+                            {canAddSlot ? (
+                              <button
+                                onClick={() => handleAddSlotToPeriod(dayName, period)}
+                                className="no-print"
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  minHeight: '110px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '0.35rem',
+                                  background: 'rgba(255, 255, 255, 0.02)',
+                                  border: '1px dashed rgba(99, 102, 241, 0.35)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  color: 'var(--text-muted)',
+                                  cursor: 'pointer',
+                                  padding: '0.5rem 0.25rem',
+                                  transition: 'all var(--tr-fast)',
+                                  minWidth: 0
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.background = 'rgba(99, 102, 241, 0.08)';
+                                  e.currentTarget.style.borderColor = 'var(--accent-indigo)';
+                                  e.currentTarget.style.color = 'var(--accent-indigo)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                                  e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.35)';
+                                  e.currentTarget.style.color = 'var(--text-muted)';
+                                }}
+                                title={`Click to schedule a class in ${period.name} (${period.timing})`}
+                              >
+                                <div
+                                  style={{
+                                    width: '26px',
+                                    height: '26px',
+                                    borderRadius: '50%',
+                                    background: 'rgba(99, 102, 241, 0.12)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                >
+                                  <Plus size={14} />
+                                </div>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>+ Add Class</span>
+                                <span style={{ fontSize: '0.62rem', opacity: 0.75 }}>{period.timing}</span>
+                              </button>
+                            ) : (
+                              <div
+                                style={{
+                                  textAlign: 'center',
+                                  padding: '0.5rem',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.7rem',
+                                  opacity: 0.6
+                                }}
+                              >
+                                <span>Free Period</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
-                  }
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        };
 
-                  // Class Period (1, 2, 3, 4, 5, 6)
-                  const periodSlots = daySlots.filter(s => getSlotPeriod(s) === period.periodNumber);
-
+        const renderAgendaView = (dayName: DayOfWeek, daySlots: TimetableSlot[]) => {
+          return (
+            <div className="timetable-agenda-list">
+              {TIMETABLE_PERIODS.map(period => {
+                if (period.isBreak) {
                   return (
                     <div
                       key={period.id}
                       style={{
-                        background: 'rgba(15, 23, 42, 0.5)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: 'var(--radius-md)',
-                        padding: '0.5rem 0.4rem',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.45rem',
-                        minHeight: '190px',
-                        minWidth: 0
+                        alignItems: 'center',
+                        gap: '0.85rem',
+                        padding: '0.85rem 1.15rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.03) 100%)',
+                        border: '1px dashed rgba(245, 158, 11, 0.35)'
                       }}
                     >
-                      {/* Period Column Header */}
                       <div
                         style={{
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '50%',
+                          background: 'rgba(245, 158, 11, 0.18)',
                           display: 'flex',
-                          flexDirection: 'column',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          paddingBottom: '0.35rem',
-                          borderBottom: '1px solid var(--border-subtle)',
-                          textAlign: 'center',
-                          width: '100%'
+                          flexShrink: 0
                         }}
                       >
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            fontSize: '0.78rem',
-                            color: 'var(--text-primary)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '100%'
-                          }}
-                        >
+                        <Coffee size={18} color="var(--accent-amber, #f59e0b)" />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--accent-amber, #f59e0b)' }}>
+                          Recess / Refreshment Pause
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                          {period.timing} • Break Interval
+                        </div>
+                      </div>
+                      <span className="badge badge-amber" style={{ fontSize: '0.7rem' }}>Recess</span>
+                    </div>
+                  );
+                }
+
+                const periodSlots = daySlots.filter(s => getSlotPeriod(s) === period.periodNumber);
+
+                return (
+                  <div key={period.id} className="agenda-period-block">
+                    <div className="agenda-period-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <span className="badge badge-indigo" style={{ fontWeight: 700 }}>
                           {period.name}
                         </span>
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '0.65rem',
-                            color: 'var(--text-muted)',
-                            marginTop: '0.05rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '100%'
-                          }}
-                        >
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                           {period.timing}
                         </span>
                       </div>
+                      {canAddSlot && (
+                        <button
+                          onClick={() => handleAddSlotToPeriod(dayName, period)}
+                          className="btn btn-secondary btn-sm no-print"
+                          style={{ height: '26px', fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}
+                        >
+                          <Plus size={12} /> Add Class
+                        </button>
+                      )}
+                    </div>
 
-                      {/* Slots in this period */}
-                      {periodSlots.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1, minWidth: 0 }}>
-                          {periodSlots.map(slot => (
-                            <div
-                              key={slot.id}
-                              style={{
-                                background: 'var(--bg-input)',
-                                border: '1px solid var(--border-subtle)',
-                                borderRadius: 'var(--radius-sm)',
-                                padding: '0.5rem 0.4rem',
-                                position: 'relative',
-                                borderLeft: `3px solid ${slot.color || 'var(--accent-primary)'}`,
-                                minWidth: 0,
-                                transition: 'transform var(--tr-fast), box-shadow var(--tr-fast)'
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem', gap: '0.2rem' }}>
-                                <span
-                                  style={{
-                                    fontFamily: 'var(--font-mono)',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 700,
-                                    color: slot.color || 'var(--accent-indigo)',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    padding: '0.05rem 0.3rem',
-                                    borderRadius: '3px',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    maxWidth: '65%'
-                                  }}
-                                  title={slot.subjectCode}
-                                >
-                                  {slot.subjectCode}
+                    {periodSlots.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: '0.75rem' }}>
+                        {periodSlots.map(slot => (
+                          <div
+                            key={slot.id}
+                            className="glass-panel"
+                            style={{
+                              padding: '0.95rem 1.15rem',
+                              borderLeft: `4px solid ${slot.color || 'var(--accent-primary)'}`,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <span className="dashboard-branch-highlight" style={{ fontSize: '0.9rem', padding: '0.2rem 0.65rem' }}>
+                                  {slot.subjectName}
                                 </span>
-                                <span 
-                                  className={`badge ${slot.type === 'Lab' ? 'badge-cyan' : slot.type === 'Tutorial' ? 'badge-amber' : slot.type === 'Seminar' ? 'badge-rose' : 'badge-indigo'}`} 
-                                  style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem' }}
-                                >
-                                  {slot.type === 'Lecture' ? 'Lec' : slot.type}
+                                {slot.section && (
+                                  <span className="dashboard-section-highlight" style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+                                    Section {slot.section}
+                                  </span>
+                                )}
+                                <span className={`badge ${slot.type === 'Lab' ? 'badge-cyan' : slot.type === 'Tutorial' ? 'badge-amber' : slot.type === 'Seminar' ? 'badge-rose' : 'badge-indigo'}`} style={{ fontSize: '0.68rem' }}>
+                                  {slot.type}
                                 </span>
                               </div>
-
-                              <h4
-                                style={{
-                                  fontSize: '0.78rem',
-                                  fontWeight: 700,
-                                  lineHeight: 1.25,
-                                  marginBottom: '0.35rem',
-                                  color: 'var(--text-primary)',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}
-                                title={slot.subjectName}
-                              >
-                                {slot.subjectName}
-                              </h4>
-
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <Clock size={11} style={{ color: 'var(--accent-indigo)', flexShrink: 0 }} />
-                                  <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }}>
-                                    {slot.startTime} - {slot.endTime}
-                                  </span>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <User size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {slot.facultyName}
-                                  </span>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <MapPin size={11} style={{ color: 'var(--accent-emerald)', flexShrink: 0 }} />
-                                  <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {slot.roomName}
-                                  </span>
-                                </div>
-                              </div>
-
                               {canUserManageSlot(slot) && (
-                                <div
-                                  className="no-print"
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'flex-end',
-                                    gap: '0.25rem',
-                                    marginTop: '0.45rem',
-                                    borderTop: '1px solid var(--border-subtle)',
-                                    paddingTop: '0.35rem'
-                                  }}
-                                >
+                                <div className="no-print" style={{ display: 'flex', gap: '0.35rem' }}>
                                   <button
                                     onClick={() => handleEditSlot(slot)}
                                     className="btn btn-secondary btn-sm"
-                                    style={{ padding: '0.15rem 0.35rem', fontSize: '0.65rem', height: '22px' }}
-                                    title="Edit Slot"
+                                    style={{ height: '24px', padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
                                   >
-                                    <Edit3 size={10} /> Edit
+                                    <Edit3 size={11} /> Edit
                                   </button>
                                   <button
                                     onClick={() => deleteTimetableSlot(slot.id)}
                                     className="btn btn-danger btn-sm"
-                                    style={{ padding: '0.15rem 0.35rem', fontSize: '0.65rem', height: '22px' }}
-                                    title="Delete Slot"
+                                    style={{ height: '24px', padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
                                   >
-                                    <Trash2 size={10} />
+                                    <Trash2 size={11} />
                                   </button>
                                 </div>
                               )}
                             </div>
-                          ))}
 
-                          {/* Button to add another slot in this period */}
-                          {canAddSlot && (
-                            <button
-                              onClick={() => handleAddSlotToPeriod(dayName, period)}
-                              className="btn btn-secondary btn-sm no-print"
-                              style={{
-                                width: '100%',
-                                fontSize: '0.68rem',
-                                padding: '0.2rem 0.35rem',
-                                borderStyle: 'dashed',
-                                marginTop: 'auto',
-                                height: '24px'
-                              }}
-                            >
-                              <Plus size={10} /> Add
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        /* Empty Period Slot */
-                        <div
-                          style={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minHeight: '120px',
-                            minWidth: 0
-                          }}
-                        >
-                          {canAddSlot ? (
-                            <button
-                              onClick={() => handleAddSlotToPeriod(dayName, period)}
-                              className="no-print"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                minHeight: '110px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.35rem',
-                                background: 'rgba(255, 255, 255, 0.02)',
-                                border: '1px dashed rgba(99, 102, 241, 0.35)',
-                                borderRadius: 'var(--radius-sm)',
-                                color: 'var(--text-muted)',
-                                cursor: 'pointer',
-                                padding: '0.5rem 0.25rem',
-                                transition: 'all var(--tr-fast)',
-                                minWidth: 0
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.background = 'rgba(99, 102, 241, 0.08)';
-                                e.currentTarget.style.borderColor = 'var(--accent-indigo)';
-                                e.currentTarget.style.color = 'var(--accent-indigo)';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                                e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.35)';
-                                e.currentTarget.style.color = 'var(--text-muted)';
-                              }}
-                              title={`Click to schedule a class in ${period.name} (${period.timing})`}
-                            >
-                              <div
-                                style={{
-                                  width: '26px',
-                                  height: '26px',
-                                  borderRadius: '50%',
-                                  background: 'rgba(99, 102, 241, 0.12)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}
-                              >
-                                <Plus size={14} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <Clock size={13} style={{ color: 'var(--accent-indigo)' }} />
+                                <span style={{ fontFamily: 'var(--font-mono)' }}>{slot.startTime} - {slot.endTime}</span>
                               </div>
-                              <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>+ Add Class</span>
-                              <span style={{ fontSize: '0.62rem', opacity: 0.75 }}>{period.timing}</span>
-                            </button>
-                          ) : (
-                            <div
-                              style={{
-                                textAlign: 'center',
-                                padding: '0.5rem',
-                                color: 'var(--text-muted)',
-                                fontSize: '0.7rem',
-                                opacity: 0.6
-                              }}
-                            >
-                              <span>Free Period</span>
+                              {slot.section && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <Layers size={13} style={{ color: 'var(--accent-violet, #a855f7)' }} />
+                                  <span style={{ fontWeight: 600 }}>Section {slot.section}</span>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <User size={13} style={{ color: 'var(--text-muted)' }} />
+                                <span>{slot.facultyName}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <MapPin size={13} style={{ color: 'var(--accent-emerald)' }} />
+                                <span style={{ fontWeight: 600 }}>{slot.roomName}</span>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-      };
-
-      const renderAgendaView = (dayName: DayOfWeek, daySlots: TimetableSlot[]) => {
-        return (
-          <div className="timetable-agenda-list">
-            {TIMETABLE_PERIODS.map(period => {
-              if (period.isBreak) {
-                return (
-                  <div
-                    key={period.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.85rem',
-                      padding: '0.85rem 1.15rem',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.03) 100%)',
-                      border: '1px dashed rgba(245, 158, 11, 0.35)'
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '50%',
-                        background: 'rgba(245, 158, 11, 0.18)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}
-                    >
-                      <Coffee size={18} color="var(--accent-amber, #f59e0b)" />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--accent-amber, #f59e0b)' }}>
-                        Recess / Refreshment Pause
+                          </div>
+                        ))}
                       </div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                        {period.timing} • Break Interval
+                    ) : (
+                      <div style={{ padding: '0.85rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        Free Period • No scheduled session
                       </div>
-                    </div>
-                    <span className="badge badge-amber" style={{ fontSize: '0.7rem' }}>Recess</span>
+                    )}
                   </div>
                 );
-              }
+              })}
+            </div>
+          );
+        };
 
-              const periodSlots = daySlots.filter(s => getSlotPeriod(s) === period.periodNumber);
+        if (selectedDay === 'ALL') {
+          return (
+            /* Weekly Schedule Display */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {DAYS_OF_WEEK.map(dayName => {
+                const daySlots = filteredSlots
+                  .filter(s => s.day === dayName)
+                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-              return (
-                <div key={period.id} className="agenda-period-block">
-                  <div className="agenda-period-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <span className="badge badge-indigo" style={{ fontWeight: 700 }}>
-                        {period.name}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                        {period.timing}
-                      </span>
-                    </div>
-                    {canAddSlot && (
-                      <button
-                        onClick={() => handleAddSlotToPeriod(dayName, period)}
-                        className="btn btn-secondary btn-sm no-print"
-                        style={{ height: '26px', fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}
-                      >
-                        <Plus size={12} /> Add Class
-                      </button>
-                    )}
-                  </div>
-
-                  {periodSlots.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: '0.75rem' }}>
-                      {periodSlots.map(slot => (
-                        <div
-                          key={slot.id}
-                          className="glass-panel"
-                          style={{
-                            padding: '0.95rem 1.15rem',
-                            borderLeft: `4px solid ${slot.color || 'var(--accent-primary)'}`,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.5rem'
-                          }}
+                return (
+                  <div
+                    key={dayName}
+                    className="glass-panel"
+                    style={{ padding: '1.25rem' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{dayName}</h3>
+                        <span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>
+                          {daySlots.length} Classes Scheduled
+                        </span>
+                      </div>
+                      {canAddSlot && (
+                        <button
+                          onClick={() => handleAddSlotToDay(dayName)}
+                          className="btn btn-secondary btn-sm no-print"
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span
-                                style={{
-                                  fontFamily: 'var(--font-mono)',
-                                  fontWeight: 700,
-                                  fontSize: '0.82rem',
-                                  color: slot.color || 'var(--accent-indigo)',
-                                  background: 'rgba(99, 102, 241, 0.12)',
-                                  padding: '0.15rem 0.45rem',
-                                  borderRadius: 'var(--radius-sm)'
-                                }}
-                              >
-                                {slot.subjectCode}
-                              </span>
-                              <span className={`badge ${slot.type === 'Lab' ? 'badge-cyan' : slot.type === 'Tutorial' ? 'badge-amber' : slot.type === 'Seminar' ? 'badge-rose' : 'badge-indigo'}`} style={{ fontSize: '0.68rem' }}>
-                                {slot.type}
-                              </span>
-                            </div>
-                            {canUserManageSlot(slot) && (
-                              <div className="no-print" style={{ display: 'flex', gap: '0.35rem' }}>
-                                <button
-                                  onClick={() => handleEditSlot(slot)}
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ height: '24px', padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
-                                >
-                                  <Edit3 size={11} /> Edit
-                                </button>
-                                <button
-                                  onClick={() => deleteTimetableSlot(slot.id)}
-                                  className="btn btn-danger btn-sm"
-                                  style={{ height: '24px', padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
-                                >
-                                  <Trash2 size={11} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {slot.subjectName}
-                          </h4>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <Clock size={13} style={{ color: 'var(--accent-indigo)' }} />
-                              <span style={{ fontFamily: 'var(--font-mono)' }}>{slot.startTime} - {slot.endTime}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <User size={13} style={{ color: 'var(--text-muted)' }} />
-                              <span>{slot.facultyName}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <MapPin size={13} style={{ color: 'var(--accent-emerald)' }} />
-                              <span style={{ fontWeight: 600 }}>{slot.roomName}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                          <Plus size={14} /> Add Slot to {dayName}
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ padding: '0.85rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                      Free Period • No scheduled session
-                    </div>
+
+                    {viewMode === 'matrix'
+                      ? renderPeriodGrid(dayName, daySlots)
+                      : renderAgendaView(dayName, daySlots)
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          );
+        } else {
+          return (
+            /* Single Day View with Period Grid or Agenda */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+                      {selectedDay} Schedule ({selectedSemester === 'ALL' ? 'All Semesters' : `Semester ${selectedSemester}`})
+                    </h3>
+                    <span className="badge badge-indigo">
+                      {filteredSlots.length} Classes Scheduled
+                    </span>
+                  </div>
+                  {canAddSlot && (
+                    <button
+                      onClick={() => handleAddSlotToDay(selectedDay as DayOfWeek)}
+                      className="btn btn-primary btn-sm no-print"
+                    >
+                      <Plus size={14} /> Add Slot to {selectedDay}
+                    </button>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        );
-      };
 
-      if (selectedDay === 'ALL') {
-        return (
-          /* Weekly Schedule Display */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {DAYS_OF_WEEK.map(dayName => {
-              const daySlots = filteredSlots
-                .filter(s => s.day === dayName)
-                .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-              return (
-                <div 
-                  key={dayName}
-                  className="glass-panel"
-                  style={{ padding: '1.25rem' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{dayName}</h3>
-                      <span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>
-                        {daySlots.length} Classes Scheduled
-                      </span>
-                    </div>
-                    {canAddSlot && (
-                      <button
-                        onClick={() => handleAddSlotToDay(dayName)}
-                        className="btn btn-secondary btn-sm no-print"
-                      >
-                        <Plus size={14} /> Add Slot to {dayName}
-                      </button>
-                    )}
-                  </div>
-
-                  {viewMode === 'matrix' 
-                    ? renderPeriodGrid(dayName, daySlots)
-                    : renderAgendaView(dayName, daySlots)
-                  }
-                </div>
-              );
-            })}
-          </div>
-        );
-      } else {
-        return (
-          /* Single Day View with Period Grid or Agenda */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-                    {selectedDay} Schedule ({selectedSemester === 'ALL' ? 'All Semesters' : `Semester ${selectedSemester}`})
-                  </h3>
-                  <span className="badge badge-indigo">
-                    {filteredSlots.length} Classes Scheduled
-                  </span>
-                </div>
-                {canAddSlot && (
-                  <button
-                    onClick={() => handleAddSlotToDay(selectedDay as DayOfWeek)}
-                    className="btn btn-primary btn-sm no-print"
-                  >
-                    <Plus size={14} /> Add Slot to {selectedDay}
-                  </button>
-                )}
+                {viewMode === 'matrix'
+                  ? renderPeriodGrid(selectedDay as DayOfWeek, filteredSlots)
+                  : renderAgendaView(selectedDay as DayOfWeek, filteredSlots)
+                }
               </div>
-
-              {viewMode === 'matrix'
-                ? renderPeriodGrid(selectedDay as DayOfWeek, filteredSlots)
-                : renderAgendaView(selectedDay as DayOfWeek, filteredSlots)
-              }
             </div>
-          </div>
-        );
-      }
-    })()}
+          );
+        }
+      })()}
 
       {/* Add / Edit Timetable Slot Modal */}
       <TimetableSlotModal
@@ -1036,6 +1061,7 @@ export const TimetableGrid: React.FC = () => {
         }}
         initialSlot={editingSlot}
         defaultSemester={selectedSemester === 'ALL' ? 5 : selectedSemester}
+        defaultSection={modalDefaultSection}
         defaultDay={modalDefaultDay}
         defaultPeriod={modalDefaultPeriod}
         defaultStartTime={modalDefaultStartTime}
