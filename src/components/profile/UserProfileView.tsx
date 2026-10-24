@@ -24,6 +24,7 @@ import { isSlotAssignedToUser } from '../../utils/facultyMatching';
 import { Modal } from '../common/Modal';
 import { storageService } from '../../services/storageService';
 import { authService } from '../../services/authService';
+import { firestoreService } from '../../services/firestoreService';
 
 export const UserProfileView: React.FC = () => {
   const { currentUser, setCurrentUser } = useAuth();
@@ -32,10 +33,10 @@ export const UserProfileView: React.FC = () => {
   // Display State
   const [name, setName] = useState(currentUser.name);
   const [email, setEmail] = useState(currentUser.email);
-  const [qualification, setQualification] = useState(currentUser.qualification ?? 'M.A., M.Phil., Ph.D. in English Literature');
+  const [qualification, setQualification] = useState(currentUser.qualification ?? '');
   const [designation, setDesignation] = useState(currentUser.designation);
   const [officeLocation, setOfficeLocation] = useState(currentUser.officeLocation ?? 'Faculty Block A, Cabin 204');
-  const [bio, setBio] = useState(currentUser.bio ?? 'Specializing in Academic Curriculum Coordination, Literature, and Advanced Departmental Timetable Strategy.');
+  const [bio, setBio] = useState(currentUser.bio ?? 'Specializing in Academic Curriculum Coordination, Department Administration, and Timetable Strategy.');
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
 
   // Modals
@@ -56,20 +57,20 @@ export const UserProfileView: React.FC = () => {
   // Edit Modal Form State
   const [editName, setEditName] = useState(currentUser.name);
   const [editEmail, setEditEmail] = useState(currentUser.email);
-  const [editQualification, setEditQualification] = useState(currentUser.qualification ?? 'M.A., M.Phil., Ph.D. in English Literature');
+  const [editQualification, setEditQualification] = useState(currentUser.qualification ?? '');
   const [editDesignation, setEditDesignation] = useState(currentUser.designation);
   const [editOfficeLocation, setEditOfficeLocation] = useState(currentUser.officeLocation ?? 'Faculty Block A, Cabin 204');
-  const [editBio, setEditBio] = useState(currentUser.bio ?? 'Specializing in Academic Curriculum Coordination, Literature, and Advanced Departmental Timetable Strategy.');
+  const [editBio, setEditBio] = useState(currentUser.bio ?? 'Specializing in Academic Curriculum Coordination, Department Administration, and Timetable Strategy.');
   const [editAvatar, setEditAvatar] = useState(currentUser.avatar || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setName(currentUser.name);
     setEmail(currentUser.email);
-    setQualification(currentUser.qualification ?? 'M.A., M.Phil., Ph.D. in English Literature');
+    setQualification(currentUser.qualification ?? '');
     setDesignation(currentUser.designation);
     setOfficeLocation(currentUser.officeLocation ?? 'Faculty Block A, Cabin 204');
-    setBio(currentUser.bio ?? 'Specializing in Academic Curriculum Coordination, Literature, and Advanced Departmental Timetable Strategy.');
+    setBio(currentUser.bio ?? 'Specializing in Academic Curriculum Coordination, Department Administration, and Timetable Strategy.');
     setAvatar(currentUser.avatar || '');
   }, [currentUser]);
 
@@ -84,7 +85,7 @@ export const UserProfileView: React.FC = () => {
     setEditQualification(currentUser.qualification ?? qualification ?? '');
     setEditDesignation(currentUser.designation ?? designation ?? '');
     setEditOfficeLocation(currentUser.officeLocation ?? officeLocation ?? 'Faculty Block A, Cabin 204');
-    setEditBio(currentUser.bio ?? bio ?? 'Specializing in Academic Curriculum Coordination, Literature, and Advanced Departmental Timetable Strategy.');
+    setEditBio(currentUser.bio ?? bio ?? 'Specializing in Academic Curriculum Coordination, Department Administration, and Timetable Strategy.');
     setEditAvatar(currentUser.avatar || avatar || '');
     setIsEditModalOpen(true);
   };
@@ -135,8 +136,10 @@ export const UserProfileView: React.FC = () => {
       avatar: editAvatar.trim()
     };
 
-    // Immediately persist to storage and update context
+    // Immediately persist to storage, database, and update context
     storageService.setCurrentUser(updatedUser);
+    authService.saveSession(updatedUser);
+    firestoreService.saveUser(updatedUser).catch(() => {});
     setCurrentUser(updatedUser);
     setName(updatedUser.name);
     setEmail(updatedUser.email);
@@ -615,7 +618,7 @@ export const UserProfileView: React.FC = () => {
                   className="form-input"
                   value={editQualification}
                   onChange={e => setEditQualification(e.target.value)}
-                  placeholder="e.g. M.A., M.Phil., Ph.D. in English Literature"
+                  placeholder="e.g. M.Tech, Ph.D. / M.Sc., Ph.D."
                 />
               </div>
             </div>

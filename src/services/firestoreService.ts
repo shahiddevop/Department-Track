@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   deleteDoc,
   onSnapshot,
@@ -11,6 +12,7 @@ import {
 import { db } from './firebase';
 import {
   Branch,
+  User,
   Room,
   TimetableSlot,
   DailyTopicLog,
@@ -20,13 +22,20 @@ import {
 } from '../types';
 import {
   INITIAL_BRANCHES,
+  INITIAL_USERS,
   INITIAL_ROOMS,
   INITIAL_TIMETABLE,
   INITIAL_TOPIC_LOGS,
   INITIAL_BOOKINGS,
   INITIAL_NOTIFICATIONS
 } from './mockData';
-import { isDemoEvent } from '../utils/eventStatus';
+import { 
+  isDemoEvent, 
+  isDemoNotification, 
+  isDemoSlot, 
+  DEMO_SLOT_IDS, 
+  DEMO_NOTIFICATION_IDS 
+} from '../utils/eventStatus';
 
 // Helper to remove any undefined fields before writing to Firestore
 function sanitizeForFirestore<T extends Record<string, any>>(data: T): Record<string, any> {
@@ -80,17 +89,25 @@ export const firestoreService = {
         }
       }
 
+      // Seed & synchronize canonical user accounts in Firestore database
+      try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const existingUserIds = new Set(usersSnap.docs.map(d => d.id));
+        for (const u of INITIAL_USERS) {
+          if (!existingUserIds.has(u.id)) {
+            await setDoc(doc(db, 'users', u.id), sanitizeForFirestore(u), { merge: true });
+          }
+        }
+      } catch (userErr) {
+        console.warn('[Firestore] Users check/seed notice:', userErr);
+      }
+
       if (branchesSnap.empty) {
         console.log('[Firestore] Seeding initial infrastructure data to Firestore...');
 
         // Seed Rooms
         for (const r of INITIAL_ROOMS) {
           await setDoc(doc(db, 'rooms', r.id), sanitizeForFirestore(r));
-        }
-
-        // Seed Timetable
-        for (const slot of INITIAL_TIMETABLE) {
-          await setDoc(doc(db, 'timetable', slot.id), sanitizeForFirestore(slot));
         }
 
         // Seed Topic Logs
@@ -101,11 +118,6 @@ export const firestoreService = {
         // Seed Bookings
         for (const booking of INITIAL_BOOKINGS) {
           await setDoc(doc(db, 'bookings', booking.id), sanitizeForFirestore(booking));
-        }
-
-        // Seed Notifications
-        for (const notif of INITIAL_NOTIFICATIONS) {
-          await setDoc(doc(db, 'notifications', notif.id), sanitizeForFirestore(notif));
         }
 
         console.log('[Firestore] Initial infrastructure seeding complete!');
@@ -140,10 +152,10 @@ export const firestoreService = {
     return onSnapshot(
       collection(db, 'timetable'),
       snapshot => {
-        if (!snapshot.empty) {
-          const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TimetableSlot));
-          onData(list);
-        }
+        const list = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as TimetableSlot))
+          .filter(s => !isDemoSlot(s));
+        onData(list);
       },
       err => {
         console.warn('[Firestore] Timetable sync warning:', err.message);
@@ -221,10 +233,10 @@ export const firestoreService = {
     return onSnapshot(
       collection(db, 'notifications'),
       snapshot => {
-        if (!snapshot.empty) {
-          const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Notification));
-          onData(list);
-        }
+        const list = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as Notification))
+          .filter(n => !isDemoNotification(n));
+        onData(list);
       },
       err => {
         console.warn('[Firestore] Notifications sync warning:', err.message);
@@ -359,6 +371,109 @@ export const firestoreService = {
       await deleteDoc(doc(db, 'notifications', id));
     } catch (err) {
       console.warn('[Firestore] Failed to delete notification from cloud:', err);
+    }
+  },
+
+  purgeDemoTimetable: async (): Promise<void> => {
+    try {
+      for (const id of DEMO_SLOT_IDS) {
+        await deleteDoc(doc(db, 'timetable', id)).catch(() => {});
+      }
+      const snapshot = await getDocs(collection(db, 'timetable')).catch(() => null);
+      if (snapshot && !snapshot.empty) {
+        for (const d of snapshot.docs) {
+          if (isDemoSlot({ id: d.id })) {
+            await deleteDoc(d.ref).catch(() => {});
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Firestore] Failed to purge demo timetable from cloud:', err);
+    }
+  },
+
+  purgeDemoNotifications: async (): Promise<void> => {
+    try {
+      for (const id of DEMO_NOTIFICATION_IDS) {
+        await deleteDoc(doc(db, 'notifications', id)).catch(() => {});
+      }
+      const snapshot = await getDocs(collection(db, 'notifications')).catch(() => null);
+      if (snapshot && !snapshot.empty) {
+        for (const d of snapshot.docs) {
+          const data = d.data() as Partial<Notification>;
+          if (isDemoNotification({ id: d.id, title: data?.title })) {
+            await deleteDoc(d.ref).catch(() => {});
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Firestore] Failed to purge demo notifications from cloud:', err);
+    }
+  },
+
+  // ==========================================
+  // USER & DEPARTMENT MAPPING FROM DATABASE
+  // ==========================================
+  getUserById: async (userId: string): Promise<User | null> => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        return { id: userDoc.id, ...userDoc.data() } as User;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[Firestore] getUserById warning:', err);
+      return null;
+    }
+  },
+
+  saveUser: async (user: User): Promise<void> => {
+    try {
+      await setDoc(doc(db, 'users', user.id), sanitizeForFirestore(user), { merge: true });
+    } catch (err) {
+      console.warn('[Firestore] saveUser warning:', err);
+    }
+  },
+
+  getBranchById: async (branchId: string): Promise<Branch | null> => {
+    try {
+      const bDoc = await getDoc(doc(db, 'branches', branchId));
+      if (bDoc.exists()) {
+        return { id: bDoc.id, ...bDoc.data() } as Branch;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[Firestore] getBranchById warning:', err);
+      return null;
+    }
+  },
+
+  getDepartmentForUser: async (userId: string): Promise<{ branchId: string; branch: Branch } | null> => {
+    try {
+      let user: User | null = null;
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        user = { id: userDoc.id, ...userDoc.data() } as User;
+      } else {
+        user = INITIAL_USERS.find(u => u.id === userId) || null;
+      }
+      if (!user || !user.branchId) return null;
+
+      if (user.branchId === 'ALL') {
+        return { branchId: 'ALL', branch: INITIAL_BRANCHES[0] };
+      }
+
+      const branchDoc = await getDoc(doc(db, 'branches', user.branchId));
+      if (branchDoc.exists()) {
+        const branch = { id: branchDoc.id, ...branchDoc.data() } as Branch;
+        return { branchId: user.branchId, branch };
+      }
+
+      const canonicalBranch = INITIAL_BRANCHES.find(b => b.id === user.branchId) || INITIAL_BRANCHES[0];
+      return { branchId: user.branchId, branch: canonicalBranch };
+    } catch (err) {
+      console.warn('[Firestore] getDepartmentForUser warning:', err);
+      return null;
     }
   }
 };

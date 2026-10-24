@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Academic Departmental Track (ADT) Cloud Firestore Security Rules
+    // Allows full access to departmental collections: branches, timetable, events, rooms, bookings, topic_logs, notifications, users
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

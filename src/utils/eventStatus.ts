@@ -194,3 +194,44 @@ export function isDemoEvent(event: { id?: string; title?: string }): boolean {
   }
   return false;
 }
+
+export const DEMO_NOTIFICATION_IDS = new Set([
+  'notif-1',
+  'notif-2',
+  'notif-3',
+  'notif-4',
+  'notif-5'
+]);
+
+export function isDemoNotification(notif?: { id?: string; title?: string } | null): boolean {
+  if (!notif) return false;
+  if (notif.id && DEMO_NOTIFICATION_IDS.has(notif.id)) return true;
+  if (notif.title) {
+    const t = notif.title.toLowerCase();
+    if (
+      t.includes('mid-semester syllabus completion audit') ||
+      t.includes('lab-101 gpu node driver upgrade') ||
+      t.includes('networks lab shifted')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export const DEMO_SLOT_IDS = new Set([
+  'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5', 'slot-6', 'slot-7', 'slot-8', 'slot-9',
+  'slot-10', 'slot-11', 'slot-12', 'slot-13', 'slot-14', 'slot-15', 'slot-16', 'slot-17', 'slot-18', 'slot-19',
+  'slot-zoo-1', 'slot-zoo-2', 'slot-zoo-3',
+  'slot-tel-1', 'slot-tel-2',
+  'slot-arb-1', 'slot-arb-2',
+  'slot-hin-1', 'slot-hin-2',
+  'slot-com-1', 'slot-com-2', 'slot-com-3', 'slot-com-4',
+  'slot-chem-1', 'slot-chem-2', 'slot-chem-3', 'slot-chem-4'
+]);
+
+export function isDemoSlot(slot?: { id?: string } | null): boolean {
+  if (!slot || !slot.id) return false;
+  return DEMO_SLOT_IDS.has(slot.id);
+}
+

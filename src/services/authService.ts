@@ -6,12 +6,124 @@
 
 import { User, UserRole, AccountStatus } from '../types';
 import { INITIAL_USERS, INITIAL_BRANCHES } from './mockData';
+import { firestoreService } from './firestoreService';
+import { storageService } from './storageService';
+import { auth, db } from './firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile
+} from 'firebase/auth';
+import { collection, getDocs } from 'firebase/firestore';
 
 // ─── Storage Keys ───────────────────────────────────────────────
 const AUTH_KEYS = {
   CREDENTIALS: 'adt_user_credentials_v1',
   SESSION: 'adt_active_session_v1',
   REGISTERED_FACULTY: 'adt_registered_faculty_v1',
+};
+
+// ─── Verified Provisioned Identities in Firebase Authentication ──
+export const PROVISIONED_FIREBASE_IDENTITIES: Record<string, { uid: string; name: string; email: string; department: string; role: 'admin' }> = {
+  'p.shahnaz@sjdc.edu': {
+    uid: 'h0wmMvBzlReg9aAUNj2Q6yB1tkI2',
+    name: 'Dr. P.Shahnaz',
+    email: 'p.shahnaz@sjdc.edu',
+    department: 'English',
+    role: 'admin'
+  },
+  's.latharani@sjdc.edu': {
+    uid: 'dukSYEWWynNidaUyZTtjngApTyT2',
+    name: 'S. Latha Rani',
+    email: 's.latharani@sjdc.edu',
+    department: 'Department of Computer Science',
+    role: 'admin'
+  },
+  'ksr.chandrasekhar@sjdc.edu': {
+    uid: '5hX1jYReqxPCZaGhQ6ei4rkR2uW2',
+    name: 'Dr. K.S.R Chandra Sekhar',
+    email: 'ksr.chandrasekhar@sjdc.edu',
+    department: 'Physics & Electronics',
+    role: 'admin'
+  },
+  'hn.prasanna@sjdc.edu': {
+    uid: 'FwpYXuYdDhRBwIzIzTDIwGtCNo92',
+    name: 'H.N Prasanna',
+    email: 'hn.prasanna@sjdc.edu',
+    department: 'Microbiology & Biotechnology',
+    role: 'admin'
+  },
+  't.mohanreddy@sjdc.edu': {
+    uid: 'eVYY69YWcHVkrxT3Ez3Vz4wU7dy1',
+    name: 'Dr. T. Mohan Reddy',
+    email: 't.mohanreddy@sjdc.edu',
+    department: 'Department of Mathematics',
+    role: 'admin'
+  },
+  'i.kalyani@sjdc.edu': {
+    uid: 'HClnHr7HqIRh4WaqbhsSwk67j5j1',
+    name: 'I. Kalyani',
+    email: 'i.kalyani@sjdc.edu',
+    department: 'Department of Statistics',
+    role: 'admin'
+  },
+  'cs.sreenivasrao@sjdc.edu': {
+    uid: '0E2md4mSUdb5kvH1i9wkl16Qeqa2',
+    name: 'Dr. C.S. Sreenivas Rao',
+    email: 'cs.sreenivasrao@sjdc.edu',
+    department: 'Department of Zoology',
+    role: 'admin'
+  },
+  'ny.swamy@sjdc.edu': {
+    uid: 'QDYirbHRq1Z3vsDraDF6JrBtqgu2',
+    name: 'N.Y. Swamy',
+    email: 'ny.swamy@sjdc.edu',
+    department: 'Department of Telugu',
+    role: 'admin'
+  },
+  'ts.mdmoin@sjdc.edu': {
+    uid: 'F7Zk02TyIZQIVPQcgII4q8Ek8x03',
+    name: 'TS MD Moin',
+    email: 'ts.mdmoin@sjdc.edu',
+    department: 'Department of Arabic',
+    role: 'admin'
+  },
+  'sk.mastanvali@sjdc.edu': {
+    uid: 'haTgQcj9oxZxVXhZYqTmTs4kC9L2',
+    name: 'SK Mastan Vali',
+    email: 'sk.mastanvali@sjdc.edu',
+    department: 'Department of Hindi',
+    role: 'admin'
+  },
+  'm.arjun@sjdc.edu': {
+    uid: 'Lsvv4RIr24TrVWr1OL2K90Q6TNE3',
+    name: 'M. Arjun',
+    email: 'm.arjun@sjdc.edu',
+    department: 'Department of Commerce',
+    role: 'admin'
+  },
+  'k.vasavi@sjdc.edu': {
+    uid: 'kEqYz99L1kWGJr23diqg5KzTHj83',
+    name: 'K. Vasavi',
+    email: 'k.vasavi@sjdc.edu',
+    department: 'Department of Chemistry',
+    role: 'admin'
+  },
+  'k.shantha.principal@sjdc.edu': {
+    uid: 'hsJJqijUXdTKqXNri6KmqYv5J862',
+    name: 'Dr. K. Shantha',
+    email: 'k.shantha.principal@sjdc.edu',
+    department: 'All Academic Departments',
+    role: 'admin'
+  },
+  'cv.satyanarayana.vp@sjdc.edu': {
+    uid: 'VfB1QYITqsPuqHvsLOdKCMHuPw02',
+    name: 'Dr. C.V Satyanarayana',
+    email: 'cv.satyanarayana.vp@sjdc.edu',
+    department: 'All Academic Departments',
+    role: 'admin'
+  }
 };
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -24,6 +136,7 @@ export interface UserCredential {
   mustChangePassword: boolean;
   status?: AccountStatus;
   branchId?: string;
+  uid?: string;
 }
 
 export interface FacultyRegistration {
@@ -59,6 +172,7 @@ const HOD_ADMIN_ACCOUNTS: UserCredential[] = INITIAL_USERS
     mustChangePassword: false,
     status: 'APPROVED' as const,
     branchId: u.branchId,
+    uid: PROVISIONED_FIREBASE_IDENTITIES[u.email.toLowerCase()]?.uid,
   }));
 
 // ─── Service ────────────────────────────────────────────────────
@@ -70,12 +184,10 @@ export const authService = {
     if (!existing) {
       localStorage.setItem(AUTH_KEYS.CREDENTIALS, JSON.stringify(HOD_ADMIN_ACCOUNTS));
     } else {
-      // Ensure any new HOD accounts are merged in and mustChangePassword is false
       try {
         const stored: UserCredential[] = JSON.parse(existing);
         let updated = false;
 
-        // Ensure all accounts are migrated to @sjdc.edu and mustChangePassword is false
         stored.forEach(c => {
           if (c.email && c.email.includes('@gmail.com')) {
             c.email = c.email.replace('@gmail.com', '@sjdc.edu');
@@ -85,9 +197,12 @@ export const authService = {
             c.mustChangePassword = false;
             updated = true;
           }
-          // Default pre-existing accounts to APPROVED if no status is recorded
           if (!c.status) {
             c.status = 'APPROVED';
+            updated = true;
+          }
+          if (!c.uid && PROVISIONED_FIREBASE_IDENTITIES[c.email.toLowerCase()]) {
+            c.uid = PROVISIONED_FIREBASE_IDENTITIES[c.email.toLowerCase()].uid;
             updated = true;
           }
         });
@@ -123,43 +238,137 @@ export const authService = {
     localStorage.setItem(AUTH_KEYS.CREDENTIALS, JSON.stringify(creds));
   },
 
-  /** Login with email and password */
-  login(email: string, password: string, role: 'admin' | 'faculty'): LoginResult {
+  /**
+   * Fetch all accounts that have legitimate, provisioned identities in Firebase Authentication & Firestore.
+   * Only verified accounts are displayed in the Quick Select list.
+   */
+  async getProvisionedAccounts(): Promise<User[]> {
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const list: User[] = [];
+      const seenEmails = new Set<string>();
+
+      usersSnap.forEach(d => {
+        const data = d.data() as User;
+        const email = (data.email || '').toLowerCase().trim();
+        const identity = PROVISIONED_FIREBASE_IDENTITIES[email];
+        // Ensure only accounts with verified provisioned status and valid institutional identities are included
+        if (email && identity && !seenEmails.has(email) && data.role === 'admin') {
+          seenEmails.add(email);
+          list.push({
+            ...data,
+            id: data.id || `user-${identity.uid}`,
+            uid: data.uid || identity.uid,
+            name: data.name || identity.name,
+            email: email,
+            branchName: data.branchName || identity.department,
+            role: 'admin',
+            isProvisioned: true,
+            status: 'APPROVED'
+          });
+        }
+      });
+
+      if (list.length > 0) {
+        // Return sorted by initial order in INITIAL_USERS
+        const orderMap = new Map(INITIAL_USERS.map((u, i) => [u.email.toLowerCase(), i]));
+        list.sort((a, b) => (orderMap.get(a.email.toLowerCase()) ?? 999) - (orderMap.get(b.email.toLowerCase()) ?? 999));
+        return list;
+      }
+    } catch (err) {
+      console.warn('[authService] Could not fetch provisioned accounts from Firestore, falling back to verified roster:', err);
+    }
+
+    // Fallback verified roster from INITIAL_USERS
+    return INITIAL_USERS
+      .filter(u => !!PROVISIONED_FIREBASE_IDENTITIES[u.email.toLowerCase()])
+      .map(u => ({
+        ...u,
+        uid: PROVISIONED_FIREBASE_IDENTITIES[u.email.toLowerCase()].uid,
+        isProvisioned: true,
+        status: 'APPROVED' as const
+      }));
+  },
+
+  /** Login with email and password using Firebase Authentication with Cloud Firestore profile resolution */
+  async login(email: string, password: string, role: 'admin' | 'faculty'): Promise<LoginResult> {
     this.initializeCredentials();
-    const creds = this.getCredentials();
     let normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.includes('@gmail.com')) {
       normalizedEmail = normalizedEmail.replace('@gmail.com', '@sjdc.edu');
     }
 
-    const credential = creds.find(
-      c => (c.email.toLowerCase() === normalizedEmail || c.userId.toLowerCase() === normalizedEmail) && c.role === role
+    let firebaseAuthSuccess = false;
+    let firebaseUser: any = null;
+
+    // 1. Attempt authentication with Firebase Authentication
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+      firebaseUser = userCred.user;
+      firebaseAuthSuccess = true;
+    } catch (authErr: any) {
+      console.warn('[authService] Firebase Auth sign-in message:', authErr?.code);
+      if (authErr?.code === 'auth/wrong-password' || authErr?.code === 'auth/invalid-credential') {
+        return { success: false, error: 'Incorrect password. Please try again.' };
+      }
+      if (authErr?.code === 'auth/too-many-requests') {
+        return { success: false, error: 'Too many unsuccessful attempts. Access temporarily locked. Please try again later.' };
+      }
+      if (authErr?.code === 'auth/user-not-found') {
+        return {
+          success: false,
+          error: role === 'admin'
+            ? 'No provisioned HOD/Admin account found with this email in Firebase.'
+            : 'No faculty account found with this email. Please register first.'
+        };
+      }
+      // If offline or client connectivity issue, continue to fallback
+    }
+
+    // 2. Fetch the user profile from Cloud Firestore
+    let user: User | null = null;
+    if (firebaseUser?.uid) {
+      try {
+        user = await firestoreService.getUserById(firebaseUser.uid);
+      } catch (err) {
+        console.warn('[authService] Firestore fetch by UID warning:', err);
+      }
+    }
+
+    // Search local credentials or mock data if not yet retrieved by UID
+    const creds = this.getCredentials();
+    const localCred = creds.find(
+      c => (c.email.toLowerCase() === normalizedEmail || c.userId.toLowerCase() === normalizedEmail)
     );
 
-    if (!credential) {
-      // For admin, check if the email exists but role doesn't match
-      const anyMatch = creds.find(c => c.email.toLowerCase() === normalizedEmail || c.userId.toLowerCase() === normalizedEmail);
-      if (anyMatch && anyMatch.role !== role) {
-        return { success: false, error: `This account is registered as ${anyMatch.role === 'admin' ? 'HOD/Admin' : 'Faculty'}. Please switch to the correct tab.` };
+    if (!user && localCred) {
+      try {
+        user = await firestoreService.getUserById(localCred.userId);
+      } catch {}
+    }
+
+    // Fallback: check INITIAL_USERS or registered faculty
+    if (!user) {
+      if (role === 'admin') {
+        user = INITIAL_USERS.find(u => u.email.toLowerCase() === normalizedEmail || u.id === localCred?.userId) || null;
+      } else {
+        const registeredFaculty = this.getRegisteredFaculty();
+        user = registeredFaculty.find(f => f.email.toLowerCase() === normalizedEmail || f.id === localCred?.userId) || null;
       }
-      return { success: false, error: role === 'admin' ? 'No HOD/Admin account found with this email/ID.' : 'No faculty account found. Please register first.' };
     }
 
-    if (credential.password !== password) {
-      return { success: false, error: 'Incorrect password. Please try again.' };
-    }
-
-    // Find the matching User object
-    let user: User | undefined;
-
-    if (role === 'admin') {
-      user = INITIAL_USERS.find(u => u.email.toLowerCase() === normalizedEmail || u.id.toLowerCase() === normalizedEmail || u.id === credential.userId);
-    } else {
-      // Faculty – check registered faculty list
-      const registeredFaculty = this.getRegisteredFaculty();
-      user = registeredFaculty.find(f => f.email.toLowerCase() === normalizedEmail || f.id.toLowerCase() === normalizedEmail);
-      if (!user) {
-        user = INITIAL_USERS.find(u => (u.email.toLowerCase() === normalizedEmail || u.id.toLowerCase() === normalizedEmail) && u.role === 'faculty');
+    // 3. Fallback verification if offline / Firebase client unavailable
+    if (!firebaseAuthSuccess) {
+      if (!localCred) {
+        return {
+          success: false,
+          error: role === 'admin'
+            ? 'No HOD/Admin account found with this email/ID.'
+            : 'No faculty account found. Please register first.'
+        };
+      }
+      if (localCred.password !== password) {
+        return { success: false, error: 'Incorrect password. Please try again.' };
       }
     }
 
@@ -167,9 +376,38 @@ export const authService = {
       return { success: false, error: 'User profile not found. Contact administrator.' };
     }
 
-    // Status verification gate for faculty accounts
+    // 4. Role validation
+    if (role === 'admin' && user.role !== 'admin') {
+      return { success: false, error: 'This account is registered as Faculty. Please switch to the Faculty tab.' };
+    }
+    if (role === 'faculty' && user.role !== 'faculty') {
+      return { success: false, error: 'This account is registered as HOD/Admin. Please switch to the HOD/Admin tab.' };
+    }
+
+    // Attach verified Firebase UID & status
+    if (firebaseUser?.uid) {
+      user.uid = firebaseUser.uid;
+      user.isProvisioned = true;
+    } else if (PROVISIONED_FIREBASE_IDENTITIES[normalizedEmail]) {
+      user.uid = PROVISIONED_FIREBASE_IDENTITIES[normalizedEmail].uid;
+      user.isProvisioned = true;
+    }
+
+    // 5. Confirm department mapping from database
+    if (user.branchId && user.branchId !== 'ALL') {
+      try {
+        const branch = await firestoreService.getBranchById(user.branchId);
+        if (branch) {
+          user.branchName = branch.name;
+        }
+      } catch {
+        // fallback to existing branchName
+      }
+    }
+
+    // 6. Status verification gate for faculty accounts
     if (role === 'faculty') {
-      const currentStatus = user.status || credential.status;
+      const currentStatus = user.status || localCred?.status;
       if (currentStatus === 'PENDING_VERIFICATION') {
         const deptName = user.branchName || 'your department';
         return {
@@ -187,19 +425,24 @@ export const authService = {
       }
     }
 
-    // Save session
+    // 7. Clear stale session and persist fresh state
+    storageService.clearUserSession();
+    storageService.setCurrentUser(user);
+    if (user.branchId && user.branchId !== 'ALL') {
+      storageService.setSelectedBranchId(user.branchId);
+    }
     this.saveSession(user);
 
     return {
       success: true,
       user,
-      status: (user.status || credential.status || 'APPROVED') as AccountStatus,
+      status: (user.status || localCred?.status || 'APPROVED') as AccountStatus,
       mustChangePassword: false,
     };
   },
 
-  /** Register a new faculty member with status: "PENDING_VERIFICATION" */
-  registerFaculty(registration: FacultyRegistration): LoginResult {
+  /** Register a new faculty member with institutional email and status: "PENDING_VERIFICATION" */
+  async registerFaculty(registration: FacultyRegistration): Promise<LoginResult> {
     this.initializeCredentials();
     const creds = this.getCredentials();
     const normalizedEmail = registration.email.trim().toLowerCase();
@@ -212,23 +455,31 @@ export const authService = {
       };
     }
 
-    // Check if email already exists
+    // Check if email already exists locally
     if (creds.find(c => c.email.toLowerCase() === normalizedEmail)) {
       return { success: false, error: 'An account with this institutional email already exists.' };
     }
 
-    // Find the branch
     const branch = INITIAL_BRANCHES.find(b => b.id === registration.branchId);
     if (!branch) {
       return { success: false, error: 'Invalid department selected.' };
     }
 
-    // Create user ID
-    const facultyId = `faculty-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    let facultyUid = `faculty-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, normalizedEmail, registration.password);
+      facultyUid = userCred.user.uid;
+      await updateProfile(userCred.user, { displayName: registration.name.trim() });
+    } catch (authErr: any) {
+      console.warn('[authService] Firebase Auth create user note:', authErr?.code);
+      if (authErr?.code === 'auth/email-already-in-use') {
+        return { success: false, error: 'An account with this institutional email is already registered in Firebase.' };
+      }
+    }
 
-    // Create user object with status: "PENDING_VERIFICATION"
     const newUser: User = {
-      id: facultyId,
+      id: facultyUid,
+      uid: facultyUid,
       name: registration.name.trim(),
       email: registration.email.trim(),
       role: 'faculty',
@@ -240,11 +491,12 @@ export const authService = {
       phone: registration.phone || '',
       status: 'PENDING_VERIFICATION',
       registeredAt: new Date().toISOString(),
+      isProvisioned: true
     };
 
-    // Create credential with status: "PENDING_VERIFICATION"
     const newCred: UserCredential = {
-      userId: facultyId,
+      userId: facultyUid,
+      uid: facultyUid,
       email: registration.email.trim(),
       password: registration.password,
       role: 'faculty',
@@ -254,17 +506,16 @@ export const authService = {
       branchId: registration.branchId,
     };
 
-    // Save credential
     creds.push(newCred);
     this.saveCredentials(creds);
 
-    // Save to registered faculty list
     const faculty = this.getRegisteredFaculty();
     faculty.push(newUser);
     this.saveRegisteredFaculty(faculty);
 
-    // Notice: We deliberately DO NOT save session here.
-    // The faculty cannot log in until approved by the Department HOD.
+    // Save to Firestore database under UID and facultyId
+    firestoreService.saveUser(newUser).catch(() => {});
+
     return {
       success: true,
       user: newUser,
@@ -380,6 +631,7 @@ export const authService = {
 
   clearSession(): void {
     localStorage.removeItem(AUTH_KEYS.SESSION);
+    signOut(auth).catch(() => {});
   },
 
   isLoggedIn(): boolean {
@@ -435,6 +687,9 @@ export const authService = {
     facultyList[index] = updatedUser;
     this.saveRegisteredFaculty(facultyList);
 
+    // Sync to Firestore database
+    firestoreService.saveUser(updatedUser).catch(() => {});
+
     // Update corresponding credential
     const creds = this.getCredentials();
     const credIndex = creds.findIndex(c => c.userId === facultyId || c.email.toLowerCase() === updatedUser.email.toLowerCase());
@@ -467,6 +722,9 @@ export const authService = {
     };
     facultyList[index] = updatedUser;
     this.saveRegisteredFaculty(facultyList);
+
+    // Sync to Firestore database
+    firestoreService.saveUser(updatedUser).catch(() => {});
 
     // Update corresponding credential
     const creds = this.getCredentials();

@@ -429,39 +429,45 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {upcomingEvents.map(event => (
-              <div
-                key={event.id}
-                style={{
-                  padding: '1rem',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span className="badge badge-rose" style={{ fontSize: '0.7rem' }}>
-                    {event.category}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    📅 {event.startDate}
-                  </span>
-                </div>
+          {upcomingEvents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+              No upcoming events or workshops scheduled.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {upcomingEvents.map(event => (
+                <div
+                  key={event.id}
+                  style={{
+                    padding: '1rem',
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <span className="badge badge-rose" style={{ fontSize: '0.7rem' }}>
+                      {event.category}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      📅 {event.startDate}
+                    </span>
+                  </div>
 
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.3rem' }}>
-                  {event.title}
-                </h4>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    {event.title}
+                  </h4>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.775rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
-                  <span>📍 {event.venue}</span>
-                  <span style={{ fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                    {event.registeredCount} / {event.maxSeats} Registered
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.775rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
+                    <span>📍 {event.venue}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--accent-emerald)' }}>
+                      {event.registeredCount} / {event.maxSeats} Registered
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

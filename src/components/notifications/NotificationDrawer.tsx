@@ -14,6 +14,7 @@ import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../context/AuthContext';
 import { AnnouncementModal } from './AnnouncementModal';
 import { NotificationCategory } from '../../types';
+import { isDemoNotification } from '../../utils/eventStatus';
 
 interface NotificationDrawerProps {
   isOpen: boolean;
@@ -37,6 +38,9 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
   if (!isOpen) return null;
 
   const filteredNotifications = notifications.filter(notif => {
+    // Strictly exclude any leftover demo notifications
+    if (isDemoNotification(notif)) return false;
+
     // Branch filter match
     const branchMatch = notif.targetBranch === 'ALL' || notif.targetBranch === selectedBranchId;
     if (!branchMatch) return false;

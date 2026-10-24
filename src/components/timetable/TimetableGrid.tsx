@@ -27,6 +27,7 @@ import { TimetableSlot, DayOfWeek } from '../../types';
 import { TimetableSlotModal } from './TimetableSlotModal';
 import { isSlotAssignedToUser, isAccountSpecificUser } from '../../utils/facultyMatching';
 import { TIMETABLE_PERIODS, getSlotPeriod, TimetablePeriod } from '../../utils/timetablePeriods';
+import { isDemoSlot } from '../../utils/eventStatus';
 
 const DAYS_OF_WEEK: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -72,12 +73,14 @@ export const TimetableGrid: React.FC = () => {
   };
 
   // Extract unique faculties for filter (for Super Admin / Student view)
-  const uniqueFaculties = Array.from(new Set(timetable.map(s => s.facultyName))).filter(Boolean);
+  const uniqueFaculties = Array.from(new Set(timetable.filter(s => !isDemoSlot(s)).map(s => s.facultyName))).filter(Boolean);
   // Extract unique sections
-  const uniqueSections = Array.from(new Set(timetable.map(s => s.section).filter(Boolean))).sort();
+  const uniqueSections = Array.from(new Set(timetable.filter(s => !isDemoSlot(s)).map(s => s.section).filter(Boolean))).sort();
 
   // Filtered timetable slots
   const filteredSlots = timetable.filter(slot => {
+    // Strictly exclude any leftover demo slots
+    if (isDemoSlot(slot)) return false;
     // 1. Account-specific enforcement: strictly only slots assigned to the logged-in user!
     if (isAccountSpecific && !isSlotAssignedToUser(slot, currentUser)) {
       return false;

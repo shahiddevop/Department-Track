@@ -163,7 +163,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     departmentName: string;
   } | null>(null);
 
-  // HOD/Admin accounts for the preview list
+  // Verified provisioned accounts for the Quick Select list
+  const [provisionedHods, setProvisionedHods] = useState<User[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    authService.getProvisionedAccounts().then(accounts => {
+      if (active && accounts.length > 0) {
+        setProvisionedHods(accounts);
+      }
+    });
+    return () => { active = false; };
+  }, []);
+
+  // HOD/Admin accounts for the preview list fallback
   const hodAdmins = useMemo(() =>
     INITIAL_USERS.filter(u => u.role === 'admin'),
     []
@@ -187,9 +200,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setRegistrationNotice(null);
   }, []);
 
-  // Fill email from HOD list click
+  // Fill email from HOD list click (never fills password or bypasses authentication)
   const handleHodClick = useCallback((hodEmail: string) => {
     setEmail(hodEmail);
+    setPassword('');
     setError('');
   }, []);
 
@@ -207,7 +221,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     // Small artificial delay for UX
     await new Promise(r => setTimeout(r, 600));
 
-    const result = authService.login(email, password, roleTab);
+    const result = await authService.login(email, password, roleTab);
 
     if (result.success && result.user) {
       setSuccess('Login successful! Redirecting...');
@@ -259,7 +273,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       branchId: regBranchId,
     };
 
-    const result = authService.registerFaculty(registration);
+    const result = await authService.registerFaculty(registration);
 
     if (result.success && result.user) {
       const selectedDept = INITIAL_BRANCHES.find(b => b.id === regBranchId)?.name || 'Department';
@@ -408,17 +422,35 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             {/* HOD Quick Select */}
             <div className="login-hod-preview" style={{ marginTop: 20 }}>
-              <div className="login-hod-preview-title">
-                <ShieldIcon />
-                Quick Select — Configured Accounts
+              <div className="login-hod-preview-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <ShieldIcon />
+                  Quick Select — Configured Accounts
+                </span>
+                <span style={{
+                  fontSize: '0.72rem',
+                  color: '#10b981',
+                  fontWeight: 600,
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <CheckIcon /> Verified Firebase Identities
+                </span>
               </div>
+              <p style={{ fontSize: '0.73rem', color: 'var(--text-secondary, #94a3b8)', margin: '4px 0 10px 0' }}>
+                Select an account to pre-fill email. Password entry is mandatory for authentication.
+              </p>
               <div className="login-hod-list">
-                {hodAdmins.map(hod => (
+                {(provisionedHods.length > 0 ? provisionedHods : hodAdmins).map(hod => (
                   <div
-                    key={hod.id}
+                    key={hod.uid || hod.id}
                     className="login-hod-item"
                     onClick={() => handleHodClick(hod.email)}
-                    title={`${hod.name} — ${hod.designation}`}
+                    title={`${hod.name} (${hod.branchName || 'Department'})\nClick to pre-fill email (Password required)`}
                   >
                     <div className="login-hod-avatar">{getInitials(hod.name)}</div>
                     <span className="login-hod-name">{hod.name}</span>

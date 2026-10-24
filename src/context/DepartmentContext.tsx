@@ -12,7 +12,7 @@ import {
 } from '../types';
 import { storageService } from '../services/storageService';
 import { firestoreService } from '../services/firestoreService';
-import { calculateEventStatus, isDemoEvent } from '../utils/eventStatus';
+import { calculateEventStatus, isDemoEvent, isDemoNotification, isDemoSlot } from '../utils/eventStatus';
 import { syncAllRoomStatuses, isBookingActiveNow, formatTime12h } from '../utils/roomStatus';
 import { useAuth } from './AuthContext';
 import { INITIAL_BRANCHES } from '../services/mockData';
@@ -106,7 +106,12 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Core Data States
   const [branches, setBranches] = useState<Branch[]>(() => storageService.getBranches());
-  const [selectedBranchId, setSelectedBranchIdState] = useState<string>(() => storageService.getSelectedBranchId());
+  const [selectedBranchId, setSelectedBranchIdState] = useState<string>(() => {
+    if (currentUser?.branchId && currentUser.branchId !== 'ALL') {
+      return currentUser.branchId;
+    }
+    return storageService.getSelectedBranchId();
+  });
   const [bookings, setBookings] = useState<RoomBooking[]>(() => storageService.getBookings());
   const [rooms, setRooms] = useState<Room[]>(() => {
     const storedRooms = storageService.getRooms();
@@ -114,7 +119,10 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const { updatedRooms } = syncAllRoomStatuses(storedRooms, storedBookings, new Date());
     return updatedRooms;
   });
-  const [timetable, setTimetable] = useState<TimetableSlot[]>(() => storageService.getTimetable());
+  const [timetable, setTimetable] = useState<TimetableSlot[]>(() => {
+    const stored = storageService.getTimetable();
+    return stored.filter(s => !isDemoSlot(s));
+  });
   const [topicLogs, setTopicLogs] = useState<DailyTopicLog[]>(() => storageService.getTopicLogs());
   const [events, setEvents] = useState<DepartmentEvent[]>(() => {
     const stored = storageService.getEvents();
@@ -122,7 +130,10 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .filter(e => !isDemoEvent(e))
       .map(e => ({ ...e, status: calculateEventStatus(e) }));
   });
-  const [notifications, setNotifications] = useState<Notification[]>(() => storageService.getNotifications());
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+    const stored = storageService.getNotifications();
+    return stored.filter(n => !isDemoNotification(n));
+  });
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Sync to localStorage
@@ -206,6 +217,9 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     firestoreService.seedInitialDataIfEmpty().catch(err => {
       console.warn('[Firestore] Seed check:', err);
     });
+    firestoreService.purgeDemoTimetable().catch(() => {});
+    firestoreService.purgeDemoNotifications().catch(() => {});
+    firestoreService.purgeDemoEvents().catch(() => {});
 
     // 2. Subscribe to real-time Cloud Firestore updates
     const unsubEvents = firestoreService.subscribeEvents(cloudEvents => {
@@ -217,7 +231,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
 
     const unsubTimetable = firestoreService.subscribeTimetable(cloudSlots => {
-      setTimetable(cloudSlots);
+      setTimetable((cloudSlots || []).filter(s => !isDemoSlot(s)));
     });
 
     const unsubLogs = firestoreService.subscribeTopicLogs(cloudLogs => {
@@ -247,7 +261,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
 
     const unsubNotifs = firestoreService.subscribeNotifications(cloudNotifs => {
-      setNotifications(cloudNotifs);
+      setNotifications((cloudNotifs || []).filter(n => !isDemoNotification(n)));
     });
 
     return () => {
@@ -285,15 +299,48 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           id === 'branch-it' ? 'branch-mb' :
             id;
     setSelectedBranchIdState(validId);
-    const branch = branches.find(b => b.id === validId);
+    storageService.setSelectedBranchId(validId);
+    const branch = branches.find(b => b.id === validId) || INITIAL_BRANCHES.find(b => b.id === validId);
     if (branch) {
       addToast(`Switched active branch to ${branch.name}`, 'info');
     }
   };
 
+  // Whenever the authenticated user changes, synchronize active department based on user's unique ID
+  useEffect(() => {
+    if (currentUser?.branchId && currentUser.branchId !== 'ALL') {
+      if (selectedBranchId !== currentUser.branchId) {
+        setSelectedBranchIdState(currentUser.branchId);
+        storageService.setSelectedBranchId(currentUser.branchId);
+      }
+    }
+  }, [currentUser?.id, currentUser?.branchId]);
+
+  // Query database using the logged-in user's unique ID to verify department assignment
+  useEffect(() => {
+    if (currentUser?.id && currentUser?.branchId && currentUser.branchId !== 'ALL') {
+      firestoreService.getDepartmentForUser(currentUser.id).then(res => {
+        if (res?.branchId && res.branchId !== selectedBranchId) {
+          setSelectedBranchIdState(res.branchId);
+          storageService.setSelectedBranchId(res.branchId);
+        }
+      }).catch(err => {
+        console.warn('[DepartmentContext] Department verify notice:', err);
+      });
+    }
+  }, [currentUser?.id]);
+
   const selectedBranch = useMemo(() => {
-    return branches.find(b => b.id === selectedBranchId) || branches[0];
-  }, [branches, selectedBranchId]);
+    const found = branches.find(b => b.id === selectedBranchId);
+    if (found) return found;
+    const canonical = INITIAL_BRANCHES.find(b => b.id === selectedBranchId);
+    if (canonical) return canonical;
+    if (currentUser?.branchId && currentUser.branchId !== 'ALL') {
+      const userDept = INITIAL_BRANCHES.find(b => b.id === currentUser.branchId);
+      if (userDept) return userDept;
+    }
+    return branches[0] || INITIAL_BRANCHES[0];
+  }, [branches, selectedBranchId, currentUser?.branchId]);
 
   // Branch CRUD
   const addBranch = (newBranchData: Omit<Branch, 'id'>) => {
@@ -787,11 +834,11 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const unreadNotificationCount = useMemo(() => {
-    return notifications.filter(n => !n.isRead).length;
+    return notifications.filter(n => !isDemoNotification(n) && !n.isRead).length;
   }, [notifications]);
 
   const urgentNotifications = useMemo(() => {
-    return notifications.filter(n => n.priority === 'Urgent' || n.isUrgentBanner);
+    return notifications.filter(n => !isDemoNotification(n) && (n.priority === 'Urgent' || n.isUrgentBanner));
   }, [notifications]);
 
   // Reset & Restore
@@ -800,11 +847,11 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setBranches(storageService.getBranches());
     setSelectedBranchIdState('branch-cse');
     setRooms(storageService.getRooms());
-    setTimetable(storageService.getTimetable());
+    setTimetable(storageService.getTimetable().filter(s => !isDemoSlot(s)));
     setTopicLogs(storageService.getTopicLogs());
-    setEvents(storageService.getEvents());
+    setEvents(storageService.getEvents().filter(e => !isDemoEvent(e)));
     setBookings(storageService.getBookings());
-    setNotifications(storageService.getNotifications());
+    setNotifications(storageService.getNotifications().filter(n => !isDemoNotification(n)));
     addToast('Reset to default demo data successfully!', 'info');
   };
 
@@ -813,11 +860,11 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (ok) {
       setBranches(storageService.getBranches());
       setRooms(storageService.getRooms());
-      setTimetable(storageService.getTimetable());
+      setTimetable(storageService.getTimetable().filter(s => !isDemoSlot(s)));
       setTopicLogs(storageService.getTopicLogs());
-      setEvents(storageService.getEvents());
+      setEvents(storageService.getEvents().filter(e => !isDemoEvent(e)));
       setBookings(storageService.getBookings());
-      setNotifications(storageService.getNotifications());
+      setNotifications(storageService.getNotifications().filter(n => !isDemoNotification(n)));
       addToast('Department data restored successfully from backup JSON', 'success');
       return true;
     } else {

@@ -3,6 +3,7 @@ import { User, UserRole, Branch } from '../types';
 import { INITIAL_USERS } from '../services/mockData';
 import { storageService } from '../services/storageService';
 import { authService } from '../services/authService';
+import { firestoreService } from '../services/firestoreService';
 
 interface AuthContextType {
   currentUser: User;
@@ -61,9 +62,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return [...INITIAL_USERS, ...extra];
   }, [registeredFacultyList]);
 
-  // Initialize auth credentials on mount
+  // Initialize auth credentials on mount & revalidate active session from database
   useEffect(() => {
     authService.initializeCredentials();
+
+    const session = authService.getSession();
+    if (session?.user?.id) {
+      firestoreService.getUserById(session.user.id).then(dbUser => {
+        if (dbUser) {
+          setCurrentUserState(dbUser);
+          storageService.setCurrentUser(dbUser);
+          if (dbUser.branchId && dbUser.branchId !== 'ALL') {
+            storageService.setSelectedBranchId(dbUser.branchId);
+          }
+          authService.saveSession(dbUser);
+        }
+      }).catch(err => {
+        console.warn('[AuthContext] Session user sync fallback:', err);
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -72,23 +89,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setCurrentUser = (user: User) => {
     setCurrentUserState(user);
+    storageService.setCurrentUser(user);
+    if (user.branchId && user.branchId !== 'ALL') {
+      storageService.setSelectedBranchId(user.branchId);
+    }
+    authService.saveSession(user);
+    firestoreService.saveUser(user).catch(() => {});
   };
 
   // Login handler
   const loginUser = useCallback((user: User, _mustChange: boolean = false) => {
+    storageService.clearUserSession();
     setCurrentUserState(user);
     setIsAuthenticated(true);
     setMustChangePassword(false);
     storageService.setCurrentUser(user);
+    if (user.branchId && user.branchId !== 'ALL') {
+      storageService.setSelectedBranchId(user.branchId);
+    }
     authService.saveSession(user);
   }, []);
 
   // Logout handler
   const logout = useCallback(() => {
     authService.clearSession();
+    storageService.clearUserSession();
     setIsAuthenticated(false);
     setMustChangePassword(false);
-    // Reset to default user
+    // Reset to clean default state
     const defaultUser = INITIAL_USERS[0];
     setCurrentUserState(defaultUser);
   }, []);
@@ -102,6 +130,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const foundUser = allUsers.find(u => u.role === role);
     if (foundUser) {
       setCurrentUserState(foundUser);
+      storageService.setCurrentUser(foundUser);
+      if (foundUser.branchId && foundUser.branchId !== 'ALL') {
+        storageService.setSelectedBranchId(foundUser.branchId);
+      }
+      authService.saveSession(foundUser);
     }
   };
 
@@ -114,6 +147,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const foundUser = allUsers.find(u => u.id === mappedId || u.id === userId);
     if (foundUser) {
       setCurrentUserState(foundUser);
+      storageService.setCurrentUser(foundUser);
+      if (foundUser.branchId && foundUser.branchId !== 'ALL') {
+        storageService.setSelectedBranchId(foundUser.branchId);
+      }
+      authService.saveSession(foundUser);
     }
   };
 

@@ -20,6 +20,8 @@ export interface User {
   registeredAt?: string;
   approvedAt?: string;
   approvedBy?: string;
+  uid?: string;
+  isProvisioned?: boolean;
 }
 
 export interface Branch {

@@ -18,7 +18,7 @@ import {
   INITIAL_BOOKINGS,
   INITIAL_NOTIFICATIONS
 } from './mockData';
-import { isDemoEvent } from '../utils/eventStatus';
+import { isDemoEvent, isDemoNotification, isDemoSlot } from '../utils/eventStatus';
 
 const STORAGE_KEYS = {
   BRANCHES: 'acadpulse_branches_v3',
@@ -240,7 +240,7 @@ export const storageService = {
         localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(principal));
         return principal;
       }
-      if (parsed.role === 'student' || parsed.role === 'faculty' || parsed.id === 'user-5' || !INITIAL_USERS.some(u => u.id === parsed.id)) {
+      if (parsed.role === 'student' || parsed.id === 'user-5') {
         localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
         return INITIAL_USERS[0];
       }
@@ -254,6 +254,19 @@ export const storageService = {
   },
   setCurrentUser: (user: User): void => {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+  },
+
+  // Clear user session & department cache on logout
+  clearUserSession: (): void => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_BRANCH);
+      localStorage.removeItem('acadpulse_user_v2');
+      localStorage.removeItem('acadpulse_selected_branch_v2');
+      localStorage.removeItem('adt_active_session_v1');
+    } catch (e) {
+      console.warn('Could not clear user session:', e);
+    }
   },
 
   // Selected Branch ID
@@ -323,47 +336,21 @@ export const storageService = {
   getTimetable: (): TimetableSlot[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TIMETABLE);
-      if (!data) return INITIAL_TIMETABLE;
+      if (!data) return [];
       const parsed: TimetableSlot[] = JSON.parse(data);
-      let updated = false;
-
-      // Consolidate faculty migrations into a clean dictionary mapping
-      const facultyMap: Record<string, string> = {
-        'Raisa Tahseen': 'Dr. P.Shahnaz',
-        'Dr. Rajesh Sharma': 'Dr. P.Shahnaz',
-        'Dr. Ramesh Chandra': 'Dr. C.S. Sreenivas Rao',
-        'Dr. K. Srinivas Rao': 'N.Y. Swamy',
-        'Dr. Tariq Al-Mansoor': 'TS MD Moin',
-        'Dr. Meenakshi Pandey': 'SK Mastan Vali'
-      };
-
-      parsed.forEach(s => {
-        if (facultyMap[s.facultyName]) {
-          s.facultyName = facultyMap[s.facultyName];
-          updated = true;
-        } else if (s.facultyId === 'user-1' && s.branchId === 'branch-cse') {
-          s.facultyName = 'Dr. P.Shahnaz';
-          updated = true;
-        }
-      });
-
-      const newBranchIds = ['branch-zoo', 'branch-tel', 'branch-arb', 'branch-hin', 'branch-com', 'branch-chem'];
-      const missingBranchSlots = INITIAL_TIMETABLE.filter(s => newBranchIds.includes(s.branchId) && !parsed.some(existing => existing.id === s.id));
-      if (missingBranchSlots.length > 0) {
-        const merged = [...parsed, ...missingBranchSlots];
-        localStorage.setItem(STORAGE_KEYS.TIMETABLE, JSON.stringify(merged));
-        return merged;
+      if (!Array.isArray(parsed)) return [];
+      const cleaned = parsed.filter(s => !isDemoSlot(s));
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEYS.TIMETABLE, JSON.stringify(cleaned));
       }
-      if (updated) {
-        localStorage.setItem(STORAGE_KEYS.TIMETABLE, JSON.stringify(parsed));
-      }
-      return parsed;
+      return cleaned;
     } catch {
-      return INITIAL_TIMETABLE;
+      return [];
     }
   },
   setTimetable: (slots: TimetableSlot[]): void => {
-    localStorage.setItem(STORAGE_KEYS.TIMETABLE, JSON.stringify(slots));
+    const clean = (slots || []).filter(s => !isDemoSlot(s));
+    localStorage.setItem(STORAGE_KEYS.TIMETABLE, JSON.stringify(clean));
   },
 
   // Topic Logs
@@ -460,21 +447,23 @@ export const storageService = {
   getNotifications: (): Notification[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-      if (!data) return INITIAL_NOTIFICATIONS;
+      if (!data) return [];
       const parsed: Notification[] = JSON.parse(data);
-      let updated = false;
-      parsed.forEach(n => {
+      if (!Array.isArray(parsed)) return [];
+      const cleaned = parsed.filter(n => !isDemoNotification(n));
+      let updated = cleaned.length !== parsed.length;
+      cleaned.forEach(n => {
         if (n.author && n.author.includes('Raisa Tahseen')) {
           n.author = 'Dr. P.Shahnaz (HOD - English)';
           updated = true;
         }
       });
       if (updated) {
-        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(parsed));
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(cleaned));
       }
-      return parsed;
+      return cleaned;
     } catch {
-      return INITIAL_NOTIFICATIONS;
+      return [];
     }
   },
   setNotifications: (notifications: Notification[]): void => {
