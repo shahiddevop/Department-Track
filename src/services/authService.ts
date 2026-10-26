@@ -347,6 +347,15 @@ export const authService = {
       } catch {}
     }
 
+    // Query Firestore by email if not found yet
+    if (!user) {
+      try {
+        user = await firestoreService.getUserByEmail(normalizedEmail);
+      } catch (err) {
+        console.warn('[authService] Firestore fetch by email warning:', err);
+      }
+    }
+
     // Fallback: check INITIAL_USERS or registered faculty
     if (!user) {
       if (role === 'admin') {
@@ -410,6 +419,7 @@ export const authService = {
       const currentStatus = user.status || localCred?.status;
       if (currentStatus === 'PENDING_VERIFICATION') {
         const deptName = user.branchName || 'your department';
+        signOut(auth).catch(() => {});
         return {
           success: false,
           status: 'PENDING_VERIFICATION',
@@ -417,11 +427,18 @@ export const authService = {
         };
       }
       if (currentStatus === 'REJECTED') {
+        signOut(auth).catch(() => {});
         return {
           success: false,
           status: 'REJECTED',
           error: 'Your registration request was rejected by the Department HOD. Please contact department administration.'
         };
+      }
+
+      // Reconcile local credentials status when approved in Firestore
+      if (localCred && localCred.status !== 'APPROVED') {
+        localCred.status = 'APPROVED';
+        this.saveCredentials(creds);
       }
     }
 
@@ -455,6 +472,25 @@ export const authService = {
       };
     }
 
+    // Check if email already exists in Firestore database
+    try {
+      const existingInDb = await firestoreService.getUserByEmail(normalizedEmail);
+      if (existingInDb) {
+        if (existingInDb.status === 'PENDING_VERIFICATION') {
+          return {
+            success: false,
+            error: 'A registration request with this institutional email is already pending approval by the Department HOD.'
+          };
+        }
+        return {
+          success: false,
+          error: 'An account with this institutional email is already registered and approved. Please sign in.'
+        };
+      }
+    } catch (checkErr) {
+      console.warn('[authService] Check existing user notice:', checkErr);
+    }
+
     // Check if email already exists locally
     if (creds.find(c => c.email.toLowerCase() === normalizedEmail)) {
       return { success: false, error: 'An account with this institutional email already exists.' };
@@ -470,6 +506,8 @@ export const authService = {
       const userCred = await createUserWithEmailAndPassword(auth, normalizedEmail, registration.password);
       facultyUid = userCred.user.uid;
       await updateProfile(userCred.user, { displayName: registration.name.trim() });
+      // Keep unverified user signed out until HOD approval
+      await signOut(auth);
     } catch (authErr: any) {
       console.warn('[authService] Firebase Auth create user note:', authErr?.code);
       if (authErr?.code === 'auth/email-already-in-use') {
@@ -481,7 +519,7 @@ export const authService = {
       id: facultyUid,
       uid: facultyUid,
       name: registration.name.trim(),
-      email: registration.email.trim(),
+      email: normalizedEmail,
       role: 'faculty',
       designation: registration.designation || 'Assistant Professor',
       qualification: registration.qualification || '',
@@ -497,7 +535,7 @@ export const authService = {
     const newCred: UserCredential = {
       userId: facultyUid,
       uid: facultyUid,
-      email: registration.email.trim(),
+      email: normalizedEmail,
       password: registration.password,
       role: 'faculty',
       name: registration.name.trim(),
@@ -513,8 +551,12 @@ export const authService = {
     faculty.push(newUser);
     this.saveRegisteredFaculty(faculty);
 
-    // Save to Firestore database under UID and facultyId
-    firestoreService.saveUser(newUser).catch(() => {});
+    // Save to Firestore database and await write so other devices receive the real-time notification
+    await firestoreService.saveUser(newUser);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('adt_faculty_updated', { detail: newUser }));
+    }
 
     return {
       success: true,
@@ -652,53 +694,162 @@ export const authService = {
     localStorage.setItem(AUTH_KEYS.REGISTERED_FACULTY, JSON.stringify(faculty));
   },
 
+  /**
+   * Real-time subscription for pending faculty verification requests.
+   * Scoped to branchId (or all if Super Admin/ALL).
+   */
+  subscribePendingFaculty(callback: (pending: User[]) => void, branchId?: string): () => void {
+    // 1. Deliver local/cached results immediately
+    const immediate = this.getPendingFaculty(branchId);
+    callback(immediate);
+
+    // 2. Listen to Cloud Firestore users collection in real time
+    return firestoreService.subscribeFaculty(cloudFaculty => {
+      this.saveRegisteredFaculty(cloudFaculty);
+
+      const isAll = !branchId || branchId === 'ALL';
+      const seen = new Set<string>();
+      const pending = cloudFaculty.filter(f => {
+        const email = (f.email || '').toLowerCase();
+        if (seen.has(email)) return false;
+        const matchesStatus = f.status === 'PENDING_VERIFICATION';
+        const matchesDept = isAll || f.branchId === branchId;
+        if (matchesStatus && matchesDept) {
+          seen.add(email);
+          return true;
+        }
+        return false;
+      });
+
+      callback(pending);
+    });
+  },
+
+  /**
+   * Real-time subscription for approved faculty members.
+   * Scoped to branchId (or all if Super Admin/ALL).
+   */
+  subscribeApprovedFaculty(callback: (approved: User[]) => void, branchId?: string): () => void {
+    const immediate = this.getApprovedFaculty(branchId);
+    callback(immediate);
+
+    return firestoreService.subscribeFaculty(cloudFaculty => {
+      this.saveRegisteredFaculty(cloudFaculty);
+
+      const isAll = !branchId || branchId === 'ALL';
+      const seen = new Set<string>();
+      const approved = cloudFaculty.filter(f => {
+        const email = (f.email || '').toLowerCase();
+        if (seen.has(email)) return false;
+        const matchesStatus = f.status === 'APPROVED' || (!f.status && f.role === 'faculty');
+        const matchesDept = isAll || f.branchId === branchId;
+        if (matchesStatus && matchesDept) {
+          seen.add(email);
+          return true;
+        }
+        return false;
+      });
+
+      callback(approved);
+    });
+  },
+
   /** Get faculty pending verification (optionally filtered by department) */
   getPendingFaculty(branchId?: string): User[] {
     const list = this.getRegisteredFaculty();
+    const isAll = !branchId || branchId === 'ALL';
+    const seen = new Set<string>();
     return list.filter(f => {
+      const email = (f.email || '').toLowerCase();
+      if (seen.has(email)) return false;
       const isPending = f.status === 'PENDING_VERIFICATION';
-      return branchId ? isPending && f.branchId === branchId : isPending;
+      const matchesDept = isAll || f.branchId === branchId;
+      if (isPending && matchesDept) {
+        seen.add(email);
+        return true;
+      }
+      return false;
     });
   },
 
   /** Get approved faculty (optionally filtered by department) */
   getApprovedFaculty(branchId?: string): User[] {
     const list = this.getRegisteredFaculty();
+    const isAll = !branchId || branchId === 'ALL';
+    const seen = new Set<string>();
     return list.filter(f => {
+      const email = (f.email || '').toLowerCase();
+      if (seen.has(email)) return false;
       const isApproved = f.status === 'APPROVED' || (!f.status && f.role === 'faculty');
-      return branchId ? isApproved && f.branchId === branchId : isApproved;
+      const matchesDept = isAll || f.branchId === branchId;
+      if (isApproved && matchesDept) {
+        seen.add(email);
+        return true;
+      }
+      return false;
     });
   },
 
-  /** Approve a pending faculty member profile */
-  approveFaculty(facultyId: string, approvedBy: string): { success: boolean; user?: User; error?: string } {
+  /** Approve a pending faculty member profile with department-based authorization */
+  async approveFaculty(
+    facultyId: string,
+    approvedBy: string,
+    approverUser?: User
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
     const facultyList = this.getRegisteredFaculty();
-    const index = facultyList.findIndex(f => f.id === facultyId);
-    if (index === -1) {
+    let target: User | null | undefined = facultyList.find(f => f.id === facultyId || f.uid === facultyId);
+    if (!target) {
+      target = await firestoreService.getUserById(facultyId);
+    }
+
+    if (!target) {
       return { success: false, error: 'Faculty account not found.' };
     }
 
+    // Department-based access control:
+    // Only the HOD of the faculty's department (or a Super Admin) can approve
+    if (approverUser && !approverUser.isSuperAdmin) {
+      if (approverUser.branchId && target.branchId && approverUser.branchId !== target.branchId) {
+        return {
+          success: false,
+          error: `Permission Denied: Only the HOD of ${target.branchName || 'the assigned department'} can approve this faculty member.`
+        };
+      }
+    }
+
     const updatedUser: User = {
-      ...facultyList[index],
+      ...target,
       status: 'APPROVED',
       approvedAt: new Date().toISOString(),
       approvedBy
     };
-    facultyList[index] = updatedUser;
+
+    // 1. Sync to Cloud Firestore across all devices
+    await firestoreService.updateUserStatus(target.id, 'APPROVED', approvedBy);
+    if (target.uid && target.uid !== target.id) {
+      await firestoreService.updateUserStatus(target.uid, 'APPROVED', approvedBy);
+    }
+    if (target.email) {
+      await firestoreService.updateUserStatus(target.email, 'APPROVED', approvedBy);
+    }
+
+    // 2. Update local state
+    const index = facultyList.findIndex(f => f.id === target!.id || f.email === target!.email);
+    if (index !== -1) {
+      facultyList[index] = updatedUser;
+    } else {
+      facultyList.push(updatedUser);
+    }
     this.saveRegisteredFaculty(facultyList);
 
-    // Sync to Firestore database
-    firestoreService.saveUser(updatedUser).catch(() => {});
-
-    // Update corresponding credential
     const creds = this.getCredentials();
-    const credIndex = creds.findIndex(c => c.userId === facultyId || c.email.toLowerCase() === updatedUser.email.toLowerCase());
+    const credIndex = creds.findIndex(c => c.userId === target!.id || c.email.toLowerCase() === target!.email.toLowerCase());
     if (credIndex !== -1) {
       creds[credIndex].status = 'APPROVED';
       this.saveCredentials(creds);
     }
 
-    // Broadcast update
+    // 3. Broadcast local update
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('adt_faculty_updated', { detail: updatedUser }));
     }
@@ -706,29 +857,59 @@ export const authService = {
     return { success: true, user: updatedUser };
   },
 
-  /** Reject a pending faculty registration */
-  rejectFaculty(facultyId: string, rejectedBy: string): { success: boolean; user?: User; error?: string } {
+  /** Reject a pending faculty registration with department-based authorization */
+  async rejectFaculty(
+    facultyId: string,
+    rejectedBy: string,
+    approverUser?: User
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
     const facultyList = this.getRegisteredFaculty();
-    const index = facultyList.findIndex(f => f.id === facultyId);
-    if (index === -1) {
+    let target: User | null | undefined = facultyList.find(f => f.id === facultyId || f.uid === facultyId);
+    if (!target) {
+      target = await firestoreService.getUserById(facultyId);
+    }
+
+    if (!target) {
       return { success: false, error: 'Faculty account not found.' };
     }
 
+    // Department-based access control
+    if (approverUser && !approverUser.isSuperAdmin) {
+      if (approverUser.branchId && target.branchId && approverUser.branchId !== target.branchId) {
+        return {
+          success: false,
+          error: `Permission Denied: Only the HOD of ${target.branchName || 'the assigned department'} can reject this faculty request.`
+        };
+      }
+    }
+
     const updatedUser: User = {
-      ...facultyList[index],
+      ...target,
       status: 'REJECTED',
       approvedAt: new Date().toISOString(),
       approvedBy: rejectedBy
     };
-    facultyList[index] = updatedUser;
+
+    // 1. Sync to Cloud Firestore across all devices
+    await firestoreService.updateUserStatus(target.id, 'REJECTED', rejectedBy);
+    if (target.uid && target.uid !== target.id) {
+      await firestoreService.updateUserStatus(target.uid, 'REJECTED', rejectedBy);
+    }
+    if (target.email) {
+      await firestoreService.updateUserStatus(target.email, 'REJECTED', rejectedBy);
+    }
+
+    // 2. Update local state
+    const index = facultyList.findIndex(f => f.id === target!.id || f.email === target!.email);
+    if (index !== -1) {
+      facultyList[index] = updatedUser;
+    } else {
+      facultyList.push(updatedUser);
+    }
     this.saveRegisteredFaculty(facultyList);
 
-    // Sync to Firestore database
-    firestoreService.saveUser(updatedUser).catch(() => {});
-
-    // Update corresponding credential
     const creds = this.getCredentials();
-    const credIndex = creds.findIndex(c => c.userId === facultyId || c.email.toLowerCase() === updatedUser.email.toLowerCase());
+    const credIndex = creds.findIndex(c => c.userId === target!.id || c.email.toLowerCase() === target!.email.toLowerCase());
     if (credIndex !== -1) {
       creds[credIndex].status = 'REJECTED';
       this.saveCredentials(creds);

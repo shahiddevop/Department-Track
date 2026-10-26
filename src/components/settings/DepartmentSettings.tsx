@@ -46,35 +46,36 @@ export const DepartmentSettings: React.FC = () => {
   );
 
   useEffect(() => {
-    const refresh = () => {
-      setPendingFaculty(authService.getPendingFaculty(targetBranchId));
-      setApprovedFaculty(authService.getApprovedFaculty(targetBranchId));
+    const unsubPending = authService.subscribePendingFaculty(list => {
+      setPendingFaculty(list);
+    }, targetBranchId);
+
+    const unsubApproved = authService.subscribeApprovedFaculty(list => {
+      setApprovedFaculty(list);
+    }, targetBranchId);
+
+    return () => {
+      unsubPending();
+      unsubApproved();
     };
-    refresh();
-    window.addEventListener('adt_faculty_updated', refresh);
-    return () => window.removeEventListener('adt_faculty_updated', refresh);
   }, [targetBranchId]);
 
-  const handleApproveFaculty = (faculty: UserType) => {
-    const res = authService.approveFaculty(faculty.id, currentUser.name);
+  const handleApproveFaculty = async (faculty: UserType) => {
+    const res = await authService.approveFaculty(faculty.id, currentUser.name, currentUser);
     if (res.success) {
       addToast(`Approved ${faculty.name}! They can now log in to the system.`, 'success');
-      setPendingFaculty(authService.getPendingFaculty(targetBranchId));
-      setApprovedFaculty(authService.getApprovedFaculty(targetBranchId));
     } else {
       addToast(res.error || 'Failed to approve faculty.', 'error');
     }
   };
 
-  const handleRejectFaculty = (faculty: UserType) => {
+  const handleRejectFaculty = async (faculty: UserType) => {
     if (!window.confirm(`Are you sure you want to reject registration for ${faculty.name}?`)) {
       return;
     }
-    const res = authService.rejectFaculty(faculty.id, currentUser.name);
+    const res = await authService.rejectFaculty(faculty.id, currentUser.name, currentUser);
     if (res.success) {
       addToast(`Registration request for ${faculty.name} has been rejected.`, 'info');
-      setPendingFaculty(authService.getPendingFaculty(targetBranchId));
-      setApprovedFaculty(authService.getApprovedFaculty(targetBranchId));
     } else {
       addToast(res.error || 'Failed to reject faculty.', 'error');
     }

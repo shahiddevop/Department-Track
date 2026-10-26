@@ -49,11 +49,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   useEffect(() => {
-    const handleFacultyUpdate = () => {
-      setRegisteredFacultyList(authService.getApprovedFaculty());
+    const unsubscribe = authService.subscribeApprovedFaculty(list => {
+      setRegisteredFacultyList(list);
+    });
+    return () => {
+      unsubscribe();
     };
-    window.addEventListener('adt_faculty_updated', handleFacultyUpdate);
-    return () => window.removeEventListener('adt_faculty_updated', handleFacultyUpdate);
   }, []);
 
   const allUsers = useMemo(() => {

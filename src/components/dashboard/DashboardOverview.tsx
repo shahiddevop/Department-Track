@@ -52,32 +52,32 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onOpenNoti
   );
 
   useEffect(() => {
-    const refresh = () => {
-      setPendingFaculty(authService.getPendingFaculty(currentUser.isSuperAdmin ? undefined : selectedBranchId));
+    const targetBranch = currentUser.isSuperAdmin ? undefined : selectedBranchId;
+    const unsubscribe = authService.subscribePendingFaculty(list => {
+      setPendingFaculty(list);
+    }, targetBranch);
+
+    return () => {
+      unsubscribe();
     };
-    refresh();
-    window.addEventListener('adt_faculty_updated', refresh);
-    return () => window.removeEventListener('adt_faculty_updated', refresh);
   }, [selectedBranchId, currentUser]);
 
-  const handleApproveFaculty = (faculty: UserType) => {
-    const res = authService.approveFaculty(faculty.id, currentUser.name);
+  const handleApproveFaculty = async (faculty: UserType) => {
+    const res = await authService.approveFaculty(faculty.id, currentUser.name, currentUser);
     if (res.success) {
       addToast(`Approved ${faculty.name}! They can now log in to ${faculty.branchName || 'the department'}.`, 'success');
-      setPendingFaculty(authService.getPendingFaculty(currentUser.isSuperAdmin ? undefined : selectedBranchId));
     } else {
       addToast(res.error || 'Failed to approve faculty.', 'error');
     }
   };
 
-  const handleRejectFaculty = (faculty: UserType) => {
+  const handleRejectFaculty = async (faculty: UserType) => {
     if (!window.confirm(`Are you sure you want to reject registration for ${faculty.name}?`)) {
       return;
     }
-    const res = authService.rejectFaculty(faculty.id, currentUser.name);
+    const res = await authService.rejectFaculty(faculty.id, currentUser.name, currentUser);
     if (res.success) {
       addToast(`Registration for ${faculty.name} has been rejected.`, 'info');
-      setPendingFaculty(authService.getPendingFaculty(currentUser.isSuperAdmin ? undefined : selectedBranchId));
     } else {
       addToast(res.error || 'Failed to reject faculty.', 'error');
     }

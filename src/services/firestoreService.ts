@@ -7,7 +7,8 @@ import {
   onSnapshot,
   getDocs,
   writeBatch,
-  query
+  query,
+  where
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -18,7 +19,8 @@ import {
   DailyTopicLog,
   DepartmentEvent,
   RoomBooking,
-  Notification
+  Notification,
+  AccountStatus
 } from '../types';
 import {
   INITIAL_BRANCHES,
@@ -244,6 +246,52 @@ export const firestoreService = {
     );
   },
 
+  subscribeUsers: (onData: (users: User[]) => void) => {
+    return onSnapshot(
+      collection(db, 'users'),
+      snapshot => {
+        const userMap = new Map<string, User>();
+        snapshot.docs.forEach(d => {
+          const u = { id: d.id, ...d.data() } as User;
+          const key = (u.email || u.uid || d.id).toLowerCase();
+          if (!userMap.has(key)) {
+            userMap.set(key, u);
+          } else {
+            userMap.set(key, { ...userMap.get(key)!, ...u });
+          }
+        });
+        onData(Array.from(userMap.values()));
+      },
+      err => {
+        console.warn('[Firestore] Users sync warning:', err.message);
+      }
+    );
+  },
+
+  subscribeFaculty: (onData: (faculty: User[]) => void) => {
+    return onSnapshot(
+      collection(db, 'users'),
+      snapshot => {
+        const facultyMap = new Map<string, User>();
+        snapshot.docs.forEach(d => {
+          const u = { id: d.id, ...d.data() } as User;
+          if (u.role === 'faculty') {
+            const key = (u.email || u.uid || d.id).toLowerCase();
+            if (!facultyMap.has(key)) {
+              facultyMap.set(key, u);
+            } else {
+              facultyMap.set(key, { ...facultyMap.get(key)!, ...u });
+            }
+          }
+        });
+        onData(Array.from(facultyMap.values()));
+      },
+      err => {
+        console.warn('[Firestore] Faculty sync warning:', err.message);
+      }
+    );
+  },
+
   // ==========================================
   // MUTATION HELPERS (CRUD TO FIRESTORE)
   // ==========================================
@@ -427,11 +475,87 @@ export const firestoreService = {
     }
   },
 
+  getUserByEmail: async (email: string): Promise<User | null> => {
+    try {
+      const normalized = email.trim().toLowerCase();
+      const q = query(collection(db, 'users'), where('email', '==', normalized));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        return { id: d.id, ...d.data() } as User;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[Firestore] getUserByEmail warning:', err);
+      return null;
+    }
+  },
+
   saveUser: async (user: User): Promise<void> => {
     try {
-      await setDoc(doc(db, 'users', user.id), sanitizeForFirestore(user), { merge: true });
+      const payload = sanitizeForFirestore(user);
+      await setDoc(doc(db, 'users', user.id), payload, { merge: true });
+      if (user.uid && user.uid !== user.id) {
+        await setDoc(doc(db, 'users', user.uid), payload, { merge: true });
+      }
     } catch (err) {
       console.warn('[Firestore] saveUser warning:', err);
+    }
+  },
+
+  updateUserStatus: async (
+    userIdOrEmail: string,
+    status: AccountStatus,
+    approvedBy: string
+  ): Promise<boolean> => {
+    try {
+      const now = new Date().toISOString();
+      const payload: Partial<User> = {
+        status,
+        approvedAt: now,
+        approvedBy
+      };
+
+      let updated = false;
+
+      // 1. Direct document ID update
+      const directRef = doc(db, 'users', userIdOrEmail);
+      const directSnap = await getDoc(directRef);
+      if (directSnap.exists()) {
+        await setDoc(directRef, payload, { merge: true });
+        updated = true;
+        const data = directSnap.data() as User;
+        if (data.uid && data.uid !== userIdOrEmail) {
+          await setDoc(doc(db, 'users', data.uid), payload, { merge: true });
+        }
+        if (data.id && data.id !== userIdOrEmail) {
+          await setDoc(doc(db, 'users', data.id), payload, { merge: true });
+        }
+      }
+
+      // 2. Query and update all docs matching email
+      const normalized = userIdOrEmail.trim().toLowerCase();
+      if (normalized.includes('@')) {
+        const qEmail = query(collection(db, 'users'), where('email', '==', normalized));
+        const emailSnap = await getDocs(qEmail);
+        for (const d of emailSnap.docs) {
+          await setDoc(d.ref, payload, { merge: true });
+          updated = true;
+        }
+      }
+
+      // 3. Query and update any doc where uid equals userIdOrEmail
+      const qUid = query(collection(db, 'users'), where('uid', '==', userIdOrEmail));
+      const uidSnap = await getDocs(qUid);
+      for (const d of uidSnap.docs) {
+        await setDoc(d.ref, payload, { merge: true });
+        updated = true;
+      }
+
+      return updated;
+    } catch (err) {
+      console.error('[Firestore] updateUserStatus error:', err);
+      return false;
     }
   },
 
