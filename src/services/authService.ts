@@ -13,7 +13,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  updatePassword as updateFirebasePassword
 } from 'firebase/auth';
 import { collection, getDocs } from 'firebase/firestore';
 
@@ -566,7 +567,7 @@ export const authService = {
   },
 
   /** Update user password */
-  updatePassword(emailOrUserId: string, oldPassword: string, newPassword: string): { success: boolean; error?: string } {
+  async updatePassword(emailOrUserId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
     this.initializeCredentials();
     const creds = this.getCredentials();
     const normalized = emailOrUserId.trim().toLowerCase();
@@ -584,6 +585,15 @@ export const authService = {
 
     if (newPassword.length < 6) {
       return { success: false, error: 'New password must be at least 6 characters.' };
+    }
+
+    // Synchronize password update with Firebase Authentication if user is signed in
+    if (auth.currentUser) {
+      try {
+        await updateFirebasePassword(auth.currentUser, newPassword);
+      } catch (fbErr: any) {
+        console.warn('[authService] Firebase Auth updatePassword note:', fbErr?.code);
+      }
     }
 
     creds[credIndex].password = newPassword;

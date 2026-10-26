@@ -52,12 +52,10 @@ export const RoomGrid: React.FC = () => {
     });
   }, [currentUser, rooms, timetable, selectedBranchId]);
 
-  const roomTypes: string[] = [
-    'ALL',
-    'Computer Lab',
-    'Life Science',
-    'Seminar Hall'
-  ];
+  const roomTypes = useMemo(() => {
+    const types = Array.from(new Set(rooms.map(r => r.type))).filter(Boolean).sort();
+    return ['ALL', ...types];
+  }, [rooms]);
 
   const filteredRooms = rooms.filter(room => {
     if (selectedType !== 'ALL' && room.type !== selectedType) return false;

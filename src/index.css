@@ -614,7 +614,7 @@ video {
 .sidebar {
   width: 270px;
   height: 100vh;
-  background: #DCEEFF !important;
+  background: #dceeff !important;
   border-right: 1px solid rgba(0, 31, 63, 0.12) !important;
   color: #001f3f !important;
   display: flex;
@@ -623,7 +623,35 @@ video {
   top: 0;
   z-index: 110;
   flex-shrink: 0;
+  overflow: hidden;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, box-shadow 0.35s ease;
+}
+
+/* Sidebar Navigation Scrollable Area */
+.sidebar-nav {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #334e68 transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: #334e68;
+  border-radius: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: #1e293b;
 }
 
 /* Desktop Collapsed Sidebar */
@@ -639,11 +667,12 @@ video {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(0, 31, 63, 0.12);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 31, 63, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 31, 63, 0.04);
   color: #001f3f;
   cursor: pointer;
   transition: all var(--tr-fast);
@@ -653,7 +682,8 @@ video {
 .sidebar-close-btn:hover {
   color: #001f3f;
   background: #ffffff;
-  border-color: rgba(0, 31, 63, 0.3);
+  border-color: rgba(0, 31, 63, 0.25);
+  box-shadow: 0 4px 10px rgba(0, 31, 63, 0.08);
 }
 
 .mobile-menu-btn {

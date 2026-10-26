@@ -91,6 +91,7 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
   const [classType, setClassType] = useState<TopicClassType>('Theory');
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('Chalk & Board');
   const [studentsPresent, setStudentsPresent] = useState<number | string>(54);
+  const [hoursSpent, setHoursSpent] = useState<number>(1);
   const [status, setStatus] = useState<TopicStatus>('Completed');
   const [remarks, setRemarks] = useState<string>('');
 
@@ -114,7 +115,8 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
         initialLog.deliveryMode === 'Projector & Slides' ? 'Projector & PPT' :
           (initialLog.deliveryMode || 'Chalk & Board');
       setDeliveryMode(normalizedAids);
-      setStudentsPresent(initialLog.studentsPresent ?? initialLog.attendancePercentage ?? 54);
+      setStudentsPresent(initialLog.studentsPresent ?? 54);
+      setHoursSpent(initialLog.hoursSpent || 1);
       const normalizedStatus: TopicStatus =
         (initialLog.status === 'Scheduled' || initialLog.status === 'Delayed') ? 'In-Progress' :
           (initialLog.status || 'Completed');
@@ -136,6 +138,7 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
       setClassType('Theory');
       setDeliveryMode('Chalk & Board');
       setStudentsPresent(54);
+      setHoursSpent(1);
       setStatus('Completed');
       setRemarks('');
     }
@@ -185,9 +188,9 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
       presentDate: date,
       plannedDate: date,
       actualDate: date,
-      hoursSpent: Number(initialLog?.hoursSpent ?? 1),
+      hoursSpent: Number(hoursSpent) || 1,
       studentsPresent: Number(studentsPresent) || 0,
-      attendancePercentage: Number(studentsPresent) || 0,
+      attendancePercentage: Math.min(100, Math.round(((Number(studentsPresent) || 0) / 60) * 100)),
       status,
       remarks: remarks.trim()
     };
@@ -356,10 +359,10 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
             </div>
           </div>
 
-          {/* Students Present & Assignment */}
-          <div className="form-grid-1-2">
+          {/* Students Present, Duration & Assignment */}
+          <div className="form-grid-3">
             <div className="form-group">
-              <label className="form-label">No. of Students Present</label>
+              <label className="form-label">Students Present (out of 60)</label>
               <input
                 type="number"
                 min="0"
@@ -369,6 +372,23 @@ export const TopicLogModal: React.FC<TopicLogModalProps> = ({
                 value={studentsPresent}
                 onChange={e => setStudentsPresent(e.target.value === '' ? '' : Number(e.target.value))}
               />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.2rem', display: 'block' }}>
+                Attendance: {Math.min(100, Math.round(((Number(studentsPresent) || 0) / 60) * 100))}%
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Duration (Hours)</label>
+              <select
+                className="form-select"
+                value={hoursSpent}
+                onChange={e => setHoursSpent(Number(e.target.value))}
+              >
+                <option value={1}>1 Hour (Standard Period)</option>
+                <option value={1.5}>1.5 Hours</option>
+                <option value={2}>2 Hours (Lab / Block)</option>
+                <option value={3}>3 Hours (Practical Session)</option>
+              </select>
             </div>
 
             <div className="form-group">

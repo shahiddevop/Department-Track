@@ -71,7 +71,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     setIsLoading(true);
     await new Promise(r => setTimeout(r, 500));
 
-    const result = authService.updatePassword(email, currentPassword, newPassword);
+    const result = await authService.updatePassword(email, currentPassword, newPassword);
 
     if (result.success) {
       setSuccess('Password updated successfully!');

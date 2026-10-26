@@ -35,8 +35,10 @@ import {
   isDemoEvent, 
   isDemoNotification, 
   isDemoSlot, 
+  isDemoTopicLog,
   DEMO_SLOT_IDS, 
-  DEMO_NOTIFICATION_IDS 
+  DEMO_NOTIFICATION_IDS,
+  DEMO_TOPIC_LOG_IDS 
 } from '../utils/eventStatus';
 
 // Helper to remove any undefined fields before writing to Firestore
@@ -80,8 +82,9 @@ export const firestoreService = {
   // ==========================================
   seedInitialDataIfEmpty: async (): Promise<boolean> => {
     try {
-      // Purge any lingering demo events in Firestore first
+      // Purge any lingering demo events and topic logs in Firestore first
       await firestoreService.purgeDemoEvents();
+      await firestoreService.purgeDemoTopicLogs();
 
       const branchesSnap = await getDocs(collection(db, 'branches'));
       const existingBranchIds = new Set(branchesSnap.docs.map(d => d.id));
@@ -169,10 +172,10 @@ export const firestoreService = {
     return onSnapshot(
       collection(db, 'topic_logs'),
       snapshot => {
-        if (!snapshot.empty) {
-          const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as DailyTopicLog));
-          onData(list);
-        }
+        const list = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as DailyTopicLog))
+          .filter(l => !isDemoTopicLog(l));
+        onData(list);
       },
       err => {
         console.warn('[Firestore] Topic logs sync warning:', err.message);
@@ -207,10 +210,8 @@ export const firestoreService = {
     return onSnapshot(
       collection(db, 'rooms'),
       snapshot => {
-        if (!snapshot.empty) {
-          const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Room));
-          onData(list);
-        }
+        const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Room));
+        onData(list);
       },
       err => {
         console.warn('[Firestore] Rooms sync warning:', err.message);
@@ -456,6 +457,25 @@ export const firestoreService = {
       }
     } catch (err) {
       console.warn('[Firestore] Failed to purge demo notifications from cloud:', err);
+    }
+  },
+
+  purgeDemoTopicLogs: async (): Promise<void> => {
+    try {
+      for (const id of DEMO_TOPIC_LOG_IDS) {
+        await deleteDoc(doc(db, 'topic_logs', id)).catch(() => {});
+      }
+      const snapshot = await getDocs(collection(db, 'topic_logs')).catch(() => null);
+      if (snapshot && !snapshot.empty) {
+        for (const d of snapshot.docs) {
+          const data = d.data() as Partial<DailyTopicLog>;
+          if (isDemoTopicLog({ id: d.id, topicTitle: data?.topicTitle })) {
+            await deleteDoc(d.ref).catch(() => {});
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Firestore] Failed to purge demo topic logs from cloud:', err);
     }
   },
 

@@ -12,7 +12,7 @@ import {
 } from '../types';
 import { storageService } from '../services/storageService';
 import { firestoreService } from '../services/firestoreService';
-import { calculateEventStatus, isDemoEvent, isDemoNotification, isDemoSlot } from '../utils/eventStatus';
+import { calculateEventStatus, isDemoEvent, isDemoNotification, isDemoSlot, isDemoTopicLog } from '../utils/eventStatus';
 import { syncAllRoomStatuses, isBookingActiveNow, formatTime12h } from '../utils/roomStatus';
 import { useAuth } from './AuthContext';
 import { INITIAL_BRANCHES } from '../services/mockData';
@@ -71,7 +71,7 @@ interface DepartmentContextType {
   // Rooms & Bookings
   rooms: Room[];
   bookings: RoomBooking[];
-  addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'status' | 'timestamp'>) => void;
+  addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'status' | 'timestamp'>) => boolean;
   deleteRoomBooking: (id: string) => void;
   clearAllBookings: () => void;
   updateRoomStatus: (roomId: string, status: Room['currentStatus'], occupant?: string, subject?: string, slotTime?: string) => void;
@@ -123,7 +123,10 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const stored = storageService.getTimetable();
     return stored.filter(s => !isDemoSlot(s));
   });
-  const [topicLogs, setTopicLogs] = useState<DailyTopicLog[]>(() => storageService.getTopicLogs());
+  const [topicLogs, setTopicLogs] = useState<DailyTopicLog[]>(() => {
+    const stored = storageService.getTopicLogs();
+    return stored.filter(l => !isDemoTopicLog(l));
+  });
   const [events, setEvents] = useState<DepartmentEvent[]>(() => {
     const stored = storageService.getEvents();
     return stored
@@ -220,6 +223,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     firestoreService.purgeDemoTimetable().catch(() => {});
     firestoreService.purgeDemoNotifications().catch(() => {});
     firestoreService.purgeDemoEvents().catch(() => {});
+    firestoreService.purgeDemoTopicLogs().catch(() => {});
 
     // 2. Subscribe to real-time Cloud Firestore updates
     const unsubEvents = firestoreService.subscribeEvents(cloudEvents => {
@@ -235,7 +239,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
 
     const unsubLogs = firestoreService.subscribeTopicLogs(cloudLogs => {
-      setTopicLogs(cloudLogs);
+      setTopicLogs((cloudLogs || []).filter(l => !isDemoTopicLog(l)));
     });
 
     const unsubBranches = firestoreService.subscribeBranches(cloudBranches => {
@@ -498,32 +502,50 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     updated: { subjectCode: string; subjectName: string; facultyName: string; semester: number; totalUnits?: number; totalPlannedHours?: number }
   ) => {
     // 1. Update timetable slots
-    setTimetable(prev => prev.map(slot => {
-      if (slot.branchId === selectedBranchId && slot.subjectCode === oldCode) {
-        return {
-          ...slot,
-          subjectCode: updated.subjectCode,
-          subjectName: updated.subjectName,
-          facultyName: updated.facultyName,
-          semester: updated.semester
-        };
-      }
-      return slot;
-    }));
+    const updatedSlots: TimetableSlot[] = [];
+    setTimetable(prev => {
+      return prev.map(slot => {
+        if (slot.branchId === selectedBranchId && slot.subjectCode === oldCode) {
+          const mod = {
+            ...slot,
+            subjectCode: updated.subjectCode,
+            subjectName: updated.subjectName,
+            facultyName: updated.facultyName,
+            semester: updated.semester
+          };
+          updatedSlots.push(mod);
+          return mod;
+        }
+        return slot;
+      });
+    });
+    // Persist updated slots to Cloud Firestore
+    updatedSlots.forEach(slot => {
+      firestoreService.saveTimetableSlot(slot);
+    });
 
     // 2. Update topic logs
-    setTopicLogs(prev => prev.map(log => {
-      if (log.branchId === selectedBranchId && log.subjectCode === oldCode) {
-        return {
-          ...log,
-          subjectCode: updated.subjectCode,
-          subjectName: updated.subjectName,
-          facultyName: updated.facultyName,
-          semester: updated.semester
-        };
-      }
-      return log;
-    }));
+    const updatedLogs: DailyTopicLog[] = [];
+    setTopicLogs(prev => {
+      return prev.map(log => {
+        if (log.branchId === selectedBranchId && log.subjectCode === oldCode) {
+          const mod = {
+            ...log,
+            subjectCode: updated.subjectCode,
+            subjectName: updated.subjectName,
+            facultyName: updated.facultyName,
+            semester: updated.semester
+          };
+          updatedLogs.push(mod);
+          return mod;
+        }
+        return log;
+      });
+    });
+    // Persist updated logs to Cloud Firestore
+    updatedLogs.forEach(log => {
+      firestoreService.saveTopicLog(log);
+    });
 
     // 3. Save overrides for custom units / planned hours
     setSubjectOverrides(prev => {
@@ -549,8 +571,17 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteSubject = (subjectCode: string) => {
+    // Collect slots and logs to delete from Cloud Firestore
+    const slotsToDelete = timetable.filter(s => s.branchId === selectedBranchId && s.subjectCode === subjectCode);
+    const logsToDelete = topicLogs.filter(l => l.branchId === selectedBranchId && l.subjectCode === subjectCode);
+
     setTimetable(prev => prev.filter(s => !(s.branchId === selectedBranchId && s.subjectCode === subjectCode)));
     setTopicLogs(prev => prev.filter(l => !(l.branchId === selectedBranchId && l.subjectCode === subjectCode)));
+
+    // Persist deletions to Cloud Firestore
+    slotsToDelete.forEach(s => firestoreService.deleteTimetableSlot(s.id));
+    logsToDelete.forEach(l => firestoreService.deleteTopicLog(l.id));
+
     setSubjectOverrides(prev => {
       const next = { ...prev };
       delete next[subjectCode];
@@ -620,12 +651,17 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       });
 
-    // Calculate percentage
+    // Calculate percentage with division-by-zero guards
     return Array.from(subjectsMap.values()).map(sub => {
-      const pct = Math.min(100, Math.round((sub.completedHours / sub.totalPlannedHours) * 100));
+      const hoursPct = sub.totalPlannedHours > 0
+        ? Math.min(100, Math.round((sub.completedHours / sub.totalPlannedHours) * 100))
+        : 0;
+      const unitsPct = sub.totalUnits > 0
+        ? Math.min(100, Math.round((sub.completedUnits / sub.totalUnits) * 100))
+        : 0;
       return {
         ...sub,
-        progressPercentage: Math.max(pct, Math.min(100, Math.round((sub.completedUnits / sub.totalUnits) * 100)))
+        progressPercentage: Math.max(hoursPct, unitsPct)
       };
     });
   }, [timetable, topicLogs, selectedBranchId, subjectOverrides]);
@@ -723,7 +759,33 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Rooms & Bookings
-  const addRoomBooking = (bookingData: Omit<RoomBooking, 'id' | 'status' | 'timestamp'>) => {
+  const addRoomBooking = (bookingData: Omit<RoomBooking, 'id' | 'status' | 'timestamp'>): boolean => {
+    // Conflict Check: Prevent overlap with existing approved bookings
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const newStart = toMin(bookingData.startTime);
+    const newEnd = toMin(bookingData.endTime);
+
+    const conflictingBooking = bookings.find(b => {
+      if (b.status !== 'Approved') return false;
+      if (b.date !== bookingData.date) return false;
+      if (b.roomId !== bookingData.roomId && b.roomNumber !== bookingData.roomNumber) return false;
+      const exStart = toMin(b.startTime);
+      const exEnd = toMin(b.endTime);
+      return newStart < exEnd && newEnd > exStart;
+    });
+
+    if (conflictingBooking) {
+      addToast(
+        `Booking Conflict: Room ${conflictingBooking.roomNumber} is already reserved by ${conflictingBooking.bookedBy} (${conflictingBooking.startTime} - ${conflictingBooking.endTime}) for "${conflictingBooking.purpose}".`,
+        'error'
+      );
+      return false;
+    }
+
     const id = 'book-' + Math.random().toString(36).substr(2, 9);
     const newBooking: RoomBooking = {
       ...bookingData,
@@ -745,6 +807,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } else {
       addToast(`Room ${bookingData.roomNumber} reserved for ${bookingData.date} (${formattedSlot})`, 'success');
     }
+    return true;
   };
 
   const updateRoomStatus = (

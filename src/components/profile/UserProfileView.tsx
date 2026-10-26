@@ -182,7 +182,7 @@ export const UserProfileView: React.FC = () => {
     setIsPasswordLoading(true);
     await new Promise(r => setTimeout(r, 350));
 
-    const result = authService.updatePassword(
+    const result = await authService.updatePassword(
       currentUser.email || currentUser.id,
       currentPassword,
       newPassword

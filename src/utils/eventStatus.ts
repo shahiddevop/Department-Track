@@ -235,3 +235,30 @@ export function isDemoSlot(slot?: { id?: string } | null): boolean {
   return DEMO_SLOT_IDS.has(slot.id);
 }
 
+export const DEMO_TOPIC_LOG_IDS = new Set([
+  'log-1', 'log-2', 'log-3', 'log-4', 'log-5', 'log-6', 'log-7',
+  'log-com-1', 'log-chem-1', 'log-zoo-1', 'log-tel-1', 'log-arb-1', 'log-hin-1', 'log-math-1', 'log-stat-1'
+]);
+
+export function isDemoTopicLog(log?: { id?: string; topicTitle?: string } | null): boolean {
+  if (!log) return false;
+  if (log.id && DEMO_TOPIC_LOG_IDS.has(log.id)) return true;
+  if (log.topicTitle) {
+    const t = log.topicTitle.toLowerCase();
+    if (
+      t.includes('relational algebra') ||
+      t.includes('dynamic programming - 0/1 knapsack') ||
+      t.includes('process synchronization & semaphores') ||
+      t.includes('tcp congestion control') ||
+      t.includes('b+ tree indexing') ||
+      t.includes('greedy algorithms - huffman') ||
+      t.includes('virtual memory & page replacement') ||
+      t.includes('amalgamation, absorption')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+

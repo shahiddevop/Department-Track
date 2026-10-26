@@ -73,7 +73,7 @@ export const RoomBookingModal: React.FC<RoomBookingModalProps> = ({
       ? currentUser.branchId
       : (activeRoom.branchId || selectedBranchId);
 
-    addRoomBooking({
+    const success = addRoomBooking({
       roomId: activeRoom.id,
       roomNumber: activeRoom.number,
       branchId: targetBranchId,
@@ -84,8 +84,10 @@ export const RoomBookingModal: React.FC<RoomBookingModalProps> = ({
       endTime
     });
 
-    setPurpose('');
-    onClose();
+    if (success) {
+      setPurpose('');
+      onClose();
+    }
   };
 
   return (

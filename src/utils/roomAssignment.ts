@@ -64,7 +64,12 @@ export const getFacultyAssignedRoom = ({
   selectedRoom = null
 }: ResolveRoomParams): FacultyRoomAssignment => {
   if (!rooms || rooms.length === 0) {
-    throw new Error('No rooms available in inventory');
+    return {
+      room: null as unknown as Room,
+      reason: 'No facilities currently configured in inventory',
+      departmentName: currentUser?.branchName || 'Department',
+      isDirectAssignment: false
+    };
   }
 
   const deptId = (currentUser?.branchId && currentUser.branchId !== 'ALL')
@@ -181,5 +186,5 @@ export const isRoomAssignedToUser = (
     selectedBranchId
   });
 
-  return assigned.room.id === room.id;
+  return assigned.room?.id === room.id;
 };

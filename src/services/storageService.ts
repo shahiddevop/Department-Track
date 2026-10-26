@@ -18,7 +18,7 @@ import {
   INITIAL_BOOKINGS,
   INITIAL_NOTIFICATIONS
 } from './mockData';
-import { isDemoEvent, isDemoNotification, isDemoSlot } from '../utils/eventStatus';
+import { isDemoEvent, isDemoNotification, isDemoSlot, isDemoTopicLog } from '../utils/eventStatus';
 
 const STORAGE_KEYS = {
   BRANCHES: 'acadpulse_branches_v3',
@@ -357,34 +357,20 @@ export const storageService = {
   getTopicLogs: (): DailyTopicLog[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TOPIC_LOGS);
-      if (!data) return INITIAL_TOPIC_LOGS;
+      if (!data) return [];
       const parsed: DailyTopicLog[] = JSON.parse(data);
-      let updated = false;
-
-      parsed.forEach(l => {
-        if (l.facultyName === 'Raisa Tahseen' || (l.branchId === 'branch-cse' && l.subjectCode === 'CS503')) {
-          l.facultyName = 'Dr. P.Shahnaz';
-          updated = true;
-        }
-      });
-
-      const newBranchIds = ['branch-com', 'branch-chem'];
-      const missingBranchLogs = INITIAL_TOPIC_LOGS.filter(l => newBranchIds.includes(l.branchId) && !parsed.some(existing => existing.id === l.id));
-      if (missingBranchLogs.length > 0) {
-        const merged = [...parsed, ...missingBranchLogs];
-        localStorage.setItem(STORAGE_KEYS.TOPIC_LOGS, JSON.stringify(merged));
-        return merged;
+      const clean = parsed.filter(l => !isDemoTopicLog(l));
+      if (clean.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEYS.TOPIC_LOGS, JSON.stringify(clean));
       }
-      if (updated) {
-        localStorage.setItem(STORAGE_KEYS.TOPIC_LOGS, JSON.stringify(parsed));
-      }
-      return parsed;
+      return clean;
     } catch {
-      return INITIAL_TOPIC_LOGS;
+      return [];
     }
   },
   setTopicLogs: (logs: DailyTopicLog[]): void => {
-    localStorage.setItem(STORAGE_KEYS.TOPIC_LOGS, JSON.stringify(logs));
+    const clean = (logs || []).filter(l => !isDemoTopicLog(l));
+    localStorage.setItem(STORAGE_KEYS.TOPIC_LOGS, JSON.stringify(clean));
   },
 
   // Events

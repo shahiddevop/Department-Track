@@ -68,33 +68,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <aside
         className={`sidebar no-print ${isOpen ? 'sidebar-open' : ''} ${isCollapsed ? 'sidebar-collapsed' : ''}`}
         style={{
-          background: '#521dcc',
+          background: '#dceeff',
           borderRight: '1px solid rgba(0, 31, 63, 0.12)',
-          color: '#001f3f'
+          color: '#001f3f',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          overflow: 'hidden'
         }}
       >
         {/* Brand Header */}
         <div
           style={{
-            padding: '1.5rem 1.25rem 1.25rem 1.25rem',
+            padding: '1.25rem 1.15rem 0.85rem 1.15rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid rgba(0, 31, 63, 0.1)'
+            flexShrink: 0
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
             <Logo size={42} variant="badge" />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#001f3f' }}>
+                <span style={{ fontSize: '1.35rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#001f3f' }}>
                   ADT
                 </span>
-                <Sparkles size={14} color="#001f3f" />
+                <Sparkles size={16} color="#001f3f" strokeWidth={2.3} />
               </div>
-              <span style={{ fontSize: '0.725rem', color: 'rgba(0, 31, 63, 0.75)', fontWeight: 600 }}>
-                Academic Departmental Track
-              </span>
+              <div style={{ fontSize: '0.72rem', color: '#2d4a6f', fontWeight: 600, marginTop: '2px', lineHeight: 1.25 }}>
+                Academic Departmental<br />Track
+              </div>
             </div>
           </div>
 
@@ -105,14 +109,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-label="Close Sidebar"
             title="Close Sidebar"
           >
-            <X size={18} color="#001f3f" />
+            <X size={18} color="#001f3f" strokeWidth={2.2} />
           </button>
         </div>
 
-        {/* Navigation List */}
-        <nav style={{ flex: 1, padding: '1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', overflowY: 'auto' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(0, 31, 63, 0.65)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 0.5rem 0.5rem 0.5rem' }}>
-            Management Modules
+        {/* Scrollable Navigation List */}
+        <nav
+          className="sidebar-nav"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            padding: '0.5rem 0.85rem 0.75rem 0.85rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.35rem',
+            overflowY: 'auto'
+          }}
+        >
+          <div
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: '#476788',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              padding: '0.65rem 0.5rem 0.35rem 0.5rem'
+            }}
+          >
+            MANAGEMENT MODULES
           </div>
 
           {navItems.map(item => {
@@ -125,62 +149,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.85rem',
-                  padding: '0.75rem 1rem',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '0.72rem 0.85rem',
+                  borderRadius: '12px',
                   border: 'none',
-                  background: isActive ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
+                  background: isActive ? '#ffffff' : 'transparent',
                   color: '#001f3f',
-                  fontWeight: isActive ? 700 : 500,
-                  fontSize: '0.9rem',
+                  fontWeight: isActive ? 700 : 600,
+                  fontSize: '0.92rem',
                   cursor: 'pointer',
                   textAlign: 'left',
                   position: 'relative',
-                  transition: 'all var(--tr-fast)',
+                  transition: 'background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
                   width: '100%',
-                  boxShadow: isActive ? '0 2px 8px rgba(0, 31, 63, 0.08)' : 'none'
+                  boxShadow: isActive ? '0 2px 8px rgba(0, 31, 63, 0.05)' : 'none'
                 }}
                 onMouseEnter={e => {
                   if (!isActive) {
                     e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
-                    e.currentTarget.style.color = '#001f3f';
                   }
                 }}
                 onMouseLeave={e => {
                   if (!isActive) {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#001f3f';
                   }
                 }}
               >
-                {/* Glowing active left indicator */}
+                {/* Active Indicator Bar on left edge (matching reference image 2) */}
                 {isActive && (
                   <div
                     style={{
                       position: 'absolute',
                       left: 0,
-                      top: '15%',
-                      bottom: '15%',
-                      width: '4px',
+                      top: '16%',
+                      bottom: '16%',
+                      width: '5px',
                       borderRadius: '0 4px 4px 0',
-                      background: '#001f3f',
-                      boxShadow: '0 0 8px rgba(0, 31, 63, 0.35)'
+                      background: '#001f3f'
                     }}
                   />
                 )}
 
-                <span style={{ color: '#001f3f', display: 'flex' }}>
+                <span style={{ color: '#001f3f', display: 'flex', flexShrink: 0 }}>
                   {item.icon}
                 </span>
-                <span style={{ flex: 1, color: '#001f3f' }}>{item.label}</span>
+                <span
+                  style={{
+                    flex: 1,
+                    color: '#001f3f',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {item.label}
+                </span>
                 {item.badge && (
                   <span
-                    className="badge badge-amber"
                     style={{
                       fontSize: '0.65rem',
-                      padding: '0.1rem 0.4rem',
-                      background: 'rgba(245, 158, 11, 0.2)',
-                      color: '#92400e',
-                      border: '1px solid rgba(245, 158, 11, 0.3)'
+                      fontWeight: 700,
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: '9999px',
+                      background: '#e2edfc',
+                      color: '#001f3f',
+                      border: '1px solid rgba(0, 31, 63, 0.12)'
                     }}
                   >
                     {item.badge}
@@ -191,74 +223,93 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Logout Button */}
-        <div style={{ padding: '0 1rem', marginTop: '0.5rem' }}>
+        {/* Pinned Bottom Controls: Fixed Sign Out above Active Department Card */}
+        <div
+          style={{
+            flexShrink: 0,
+            padding: '0.5rem 0.85rem 0.95rem 0.85rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+          }}
+        >
+          {/* Sign Out Button */}
           <button
-            onClick={() => { if (window.confirm('Are you sure you want to sign out?')) logout(); }}
+            onClick={() => {
+              if (window.confirm('Are you sure you want to sign out?')) logout();
+            }}
             style={{
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.7rem 0.85rem',
-              background: 'rgba(239, 68, 68, 0.06)',
-              border: '1px solid rgba(239, 68, 68, 0.15)',
-              borderRadius: 'var(--radius-md)',
+              gap: '0.75rem',
+              padding: '0.72rem 1rem',
+              background: '#fee2e2',
+              border: '1px solid #fca5a5',
+              borderRadius: '14px',
               color: '#ef4444',
-              fontSize: '0.8rem',
+              fontSize: '0.88rem',
               fontWeight: 600,
               fontFamily: 'inherit',
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
+              transition: 'all 0.15s ease',
+              boxShadow: '0 1px 3px rgba(239, 68, 68, 0.08)'
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
-              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#fecaca';
+              e.currentTarget.style.borderColor = '#f87171';
             }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
-              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.15)';
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#fee2e2';
+              e.currentTarget.style.borderColor = '#fca5a5';
             }}
             title={`Sign out ${currentUser.name}`}
           >
-            <LogOut size={16} />
-            {!isCollapsed && 'Sign Out'}
+            <LogOut size={18} color="#ef4444" strokeWidth={2.2} />
+            <span>Sign Out</span>
           </button>
-        </div>
 
-        {/* Department Summary Footer Card */}
-        <div style={{ padding: '1rem', borderTop: '1px solid rgba(0, 31, 63, 0.1)' }}>
+          {/* Active Department Card */}
           <div
             style={{
-              padding: '0.9rem',
-              background: 'rgba(255, 255, 255, 0.8)',
-              border: '1px solid rgba(0, 31, 63, 0.12)',
-              borderRadius: 'var(--radius-md)',
-              boxShadow: '0 2px 8px rgba(0, 31, 63, 0.05)'
+              padding: '0.9rem 1rem',
+              background: '#ffffff',
+              border: '1px solid rgba(0, 31, 63, 0.06)',
+              borderRadius: '16px',
+              boxShadow: '0 4px 16px rgba(0, 31, 63, 0.04)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(0, 31, 63, 0.7)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#476788' }}>
                 Active Department
               </span>
               <span
                 style={{
-                  fontSize: '0.65rem',
+                  fontSize: '0.68rem',
                   fontWeight: 700,
-                  padding: '0.2rem 0.5rem',
-                  borderRadius: 'var(--radius-full)',
-                  background: 'rgba(0, 31, 63, 0.1)',
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '9999px',
+                  background: '#e2edfc',
                   color: '#001f3f',
-                  border: '1px solid rgba(0, 31, 63, 0.2)'
+                  border: '1px solid rgba(0, 31, 63, 0.08)'
                 }}
               >
                 {selectedBranch.code}
               </span>
             </div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#001f3f', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div
+              style={{
+                fontSize: '1rem',
+                fontWeight: 700,
+                color: '#001f3f',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
+            >
               {selectedBranch.name}
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'rgba(0, 31, 63, 0.7)', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.74rem', color: '#476788', marginTop: '0.25rem', fontWeight: 500 }}>
               Est. {selectedBranch.establishedYear} • {selectedBranch.totalStudents} Students
             </div>
           </div>

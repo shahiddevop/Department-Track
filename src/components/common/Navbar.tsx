@@ -15,6 +15,7 @@ import { UserProfileModal } from '../settings/UserProfileModal';
 import { HODReauthModal } from '../auth/HODReauthModal';
 import { Branch, User } from '../../types';
 import { authService } from '../../services/authService';
+import { PWAInstallPrompt } from './PWAInstallPrompt';
 import './Navbar.css';
 
 interface NavbarProps {
@@ -208,6 +209,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onToggleMob
               </div>
             )}
           </div>
+
+          {/* PWA Install Button */}
+          <PWAInstallPrompt />
 
           {/* Theme Toggle Button */}
           <button
